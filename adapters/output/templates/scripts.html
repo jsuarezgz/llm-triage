@@ -1,0 +1,247 @@
+<!-- adapters/output/templates/scripts.html -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🛡️ Security Analysis Report v3.0 loaded');
+    
+    // Enhanced interactivity
+    initializeAnimations();
+    setupCopyFunctionality();
+    setupSearchFunctionality();
+    setupKeyboardNavigation();
+    
+    // Report statistics
+    logReportStatistics();
+});
+
+function initializeAnimations() {
+    // Intersection Observer for scroll animations
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+
+    // Apply to vulnerability cards
+    document.querySelectorAll('.vulnerability-card, .remediation-card').forEach(function(el) {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+        observer.observe(el);
+    });
+}
+
+function setupCopyFunctionality() {
+    // Add copy buttons to vulnerability IDs and CWE links
+    document.querySelectorAll('.meta-value').forEach(function(element) {
+        const text = element.textContent.trim();
+        
+        if (text.match(/^(VULN-|ABAP-|CWE-)/)) {
+            element.style.cursor = 'pointer';
+            element.title = 'Click to copy ' + text;
+            
+            element.addEventListener('click', function() {
+                copyToClipboard(text);
+                showToast('✅ Copied: ' + text);
+            });
+        }
+    });
+}
+
+function setupSearchFunctionality() {
+    // Create search box
+    const searchBox = document.createElement('div');
+    searchBox.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; z-index: 1000; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <input type="text" id="vulnerabilitySearch" placeholder="🔍 Search vulnerabilities..." 
+                   style="border: 1px solid #ddd; padding: 8px; border-radius: 4px; width: 250px;">
+        </div>
+    `;
+    document.body.appendChild(searchBox);
+    
+    const searchInput = document.getElementById('vulnerabilitySearch');
+    searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        filterVulnerabilities(query);
+    });
+}
+
+function setupKeyboardNavigation() {
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+F or Cmd+F to focus search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            const searchInput = document.getElementById('vulnerabilitySearch');
+            if (searchInput) {
+                searchInput.focus();
+            }
+        }
+        
+        // Escape to clear search
+        if (e.key === 'Escape') {
+            const searchInput = document.getElementById('vulnerabilitySearch');
+            if (searchInput && searchInput === document.activeElement) {
+                searchInput.value = '';
+                filterVulnerabilities('');
+                searchInput.blur();
+            }
+        }
+    });
+}
+
+function filterVulnerabilities(query) {
+    const cards = document.querySelectorAll('.vulnerability-card');
+    let visibleCount = 0;
+    
+    cards.forEach(function(card) {
+        const text = card.textContent.toLowerCase();
+        const isVisible = query === '' || text.includes(query);
+        
+        card.style.display = isVisible ? 'block' : 'none';
+        if (isVisible) visibleCount++;
+    });
+    
+    // Update search results indicator
+    updateSearchResults(visibleCount, cards.length, query);
+}
+
+function updateSearchResults(visible, total, query) {
+    let indicator = document.getElementById('searchResults');
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'searchResults';
+        indicator.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4f46e5;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            z-index: 1000;
+            transition: opacity 0.3s;
+        `;
+        document.body.appendChild(indicator);
+    }
+    
+    if (query) {
+        indicator.textContent = `Found ${visible} of ${total} vulnerabilities`;
+        indicator.style.opacity = '1';
+    } else {
+        indicator.style.opacity = '0';
+    }
+}
+
+function copyToClipboard(text) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).catch(function() {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        document.execCommand('copy');
+    } catch (err) {
+        console.warn('Copy failed:', err);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        animation: slideInDown 0.3s ease-out;
+        font-weight: 500;
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(function() {
+        toast.style.animation = 'slideOutUp 0.3s ease-out';
+        setTimeout(function() {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 2000);
+}
+
+function logReportStatistics() {
+    const stats = {
+        totalVulnerabilities: {{ total_vulnerabilities }},
+        highPriority: {{ high_priority_count }},
+        riskScore: {{ risk_score }},
+        processingTime: '{{ report.total_processing_time_seconds | format_duration }}',
+        chunking: {{ 'true' if report.chunking_enabled else 'false' }},
+        llmAnalysis: {{ 'true' if triage_result else 'false' }},
+        reportVersion: '{{ report_version }}'
+    };
+    
+    console.log('📊 Report Statistics:', stats);
+    
+    // Performance metrics
+    console.log('⚡ Performance Metrics:');
+    console.log('  • DOM Ready:', performance.now().toFixed(2) + 'ms');
+    console.log('  • Interactive elements:', document.querySelectorAll('[onclick], [data-action]').length);
+    console.log('  • Vulnerability cards:', document.querySelectorAll('.vulnerability-card').length);
+}
+
+// CSS animations for toasts
+const additionalStyles = `
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -100%);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+@keyframes slideOutUp {
+    from {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -100%);
+    }
+}
+`;
+
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
+</script>

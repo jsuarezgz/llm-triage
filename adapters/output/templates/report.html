@@ -1,0 +1,246 @@
+ <!-- adapters/output/templates/report.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ {{ platform_name }} - Report</title>
+    {% include 'styles.html' %}
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🛡️ Security Analysis Report</h1>
+                <div class="header-grid">
+                    <div class="header-item">
+                        <div class="header-label">📁 File</div>
+                        <div class="header-value">{{ scan_result.file_info.filename }}</div>
+                    </div>
+                    <div class="header-item">
+                        <div class="header-label">📊 Total Vulnerabilities</div>
+                        <div class="header-value">{{ total_vulnerabilities }}</div>
+                    </div>
+                    <div class="header-item">
+                        <div class="header-label">⚡ High Priority</div>
+                        <div class="header-value">{{ high_priority_count }}</div>
+                    </div>
+                    <div class="header-item">
+                        <div class="header-label">🎯 Risk Score</div>
+                        <div class="header-value">{{ risk_score }}/10</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="content">
+            <!-- Executive Summary -->
+            <section class="section">
+                <h2 class="section-title">📈 Executive Summary</h2>
+                
+                <div class="metrics-grid">
+                    {% for severity, count in severity_stats.items() %}
+                    {% if count > 0 %}
+                    <div class="metric-card {{ severity | severity_class }}">
+                        <div class="metric-icon">{{ severity | severity_icon }}</div>
+                        <div class="metric-value">{{ count }}</div>
+                        <div class="metric-label">{{ severity }}</div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="summary-info">
+                    <p><strong>Analysis completed in {{ report.total_processing_time_seconds | format_duration }}</strong></p>
+                    {% if report.chunking_enabled %}
+                    <p>🧩 Advanced chunking was used for optimal analysis</p>
+                    {% endif %}
+                    {% if triage_result %}
+                    <p>🤖 AI-powered triage analyzed {{ triage_result.total_analyzed }} vulnerabilities</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Vulnerabilities -->
+            {% if scan_result.vulnerabilities %}
+            <section class="section">
+                <h2 class="section-title">🚨 Security Vulnerabilities</h2>
+                
+                <div class="vulnerabilities-list">
+                    {% for vuln in scan_result.vulnerabilities %}
+                    <div class="vulnerability-card {{ vuln.severity.value | severity_class }}">
+                        <div class="vuln-header">
+                            <h3 class="vuln-title">
+                                {{ vuln.severity | severity_icon }} {{ loop.index }}. {{ vuln.title }}
+                            </h3>
+                            <div class="vuln-badges">
+                                <span class="badge severity-{{ vuln.severity.value | severity_class }}">
+                                    {{ vuln.severity.value }}
+                                </span>
+                                <span class="badge type-badge">{{ vuln.type.value }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="vuln-body">
+                            <div class="vuln-meta">
+                                <div class="meta-item">
+                                    <span class="meta-label">📍 Location</span>
+                                    <span class="meta-value">{{ vuln.file_path }}:{{ vuln.line_number }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">🆔 ID</span>
+                                    <span class="meta-value">{{ vuln.id }}</span>
+                                </div>
+                                {% if vuln.cwe_id %}
+                                <div class="meta-item">
+                                    <span class="meta-label">🔗 CWE</span>
+                                    <span class="meta-value">
+                                        <a href="https://cwe.mitre.org/data/definitions/{{ vuln.cwe_id.replace('CWE-', '') }}.html" target="_blank">
+                                            {{ vuln.cwe_id }}
+                                        </a>
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="vuln-description">
+                                <h4>📝 Description</h4>
+                                <p>{{ vuln.description }}</p>
+                            </div>
+                            
+                            {% if vuln.code_snippet %}
+                            <div class="vuln-code">
+                                <h4>💻 Code Context</h4>
+                                <pre class="code-block">{{ vuln.code_snippet | truncate_smart(500) }}</pre>
+                            </div>
+                            {% endif %}
+                            
+                            {% if vuln.remediation_advice %}
+                            <div class="vuln-remediation">
+                                <h4>💡 Remediation Advice</h4>
+                                <div class="advice-content">{{ vuln.remediation_advice }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% else %}
+            <section class="section">
+                <div class="no-vulnerabilities">
+                    <div class="no-vulns-icon">✅</div>
+                    <h2>No Vulnerabilities Found</h2>
+                    <p>Excellent! No security vulnerabilities were detected in the analyzed code.</p>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Remediation Plans -->
+            {% if remediation_plans %}
+            <section class="section">
+                <h2 class="section-title">🛠️ Remediation Plans</h2>
+                
+                <div class="remediation-summary">
+                    <p>{{ remediation_plans | length }} actionable remediation plans generated, prioritized by risk and complexity.</p>
+                </div>
+                
+                <div class="remediation-plans">
+                    {% for plan in remediation_plans %}
+                    <div class="remediation-card">
+                        <div class="plan-header">
+                            <h3>🔧 {{ plan.vulnerability_type.value }}</h3>
+                            <span class="priority-badge priority-{{ plan.priority_level }}">
+                                {{ plan.priority_level.upper() }}
+                            </span>
+                        </div>
+                        
+                        <div class="plan-meta">
+                            <span class="plan-stat">⏱️ {{ plan.total_estimated_hours }}h</span>
+                            <span class="plan-stat">📊 Complexity: {{ plan.complexity_score }}/10</span>
+                            <span class="plan-stat">📋 {{ plan.steps | length }} steps</span>
+                        </div>
+                        
+                        <div class="plan-steps">
+                            <h4>Implementation Steps:</h4>
+                            <ol>
+                                {% for step in plan.steps %}
+                                <li class="remediation-step">
+                                    <div class="step-header">
+                                        <strong>{{ step.title }}</strong>
+                                        <span class="step-meta">{{ step.estimated_minutes }}min • {{ step.difficulty }}</span>
+                                    </div>
+                                    <div class="step-description">{{ step.description }}</div>
+                                    {% if step.code_example %}
+                                    <pre class="step-code">{{ step.code_example | truncate_smart(200) }}</pre>
+                                    {% endif %}
+                                </li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                        
+                        {% if plan.risk_if_not_fixed %}
+                        <div class="risk-warning">
+                            <h5>⚠️ Risk if not addressed:</h5>
+                            <p>{{ plan.risk_if_not_fixed }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Technical Details -->
+            <section class="section">
+                <details class="technical-details">
+                    <summary class="details-toggle">🔍 Technical Analysis Details</summary>
+                    <div class="details-content">
+                        <div class="tech-grid">
+                            <div class="tech-item">
+                                <h4>📊 Analysis Statistics</h4>
+                                <ul>
+                                    <li>Processing time: {{ report.total_processing_time_seconds | format_duration }}</li>
+                                    <li>File size: {{ scan_result.file_info.size_bytes | format_bytes }}</li>
+                                    <li>Language: {{ scan_result.language_detected or 'Auto-detected' }}</li>
+                                    <li>Chunking: {{ 'Enabled' if report.chunking_enabled else 'Disabled' }}</li>
+                                </ul>
+                            </div>
+                            
+                            {% if triage_result %}
+                            <div class="tech-item">
+                                <h4>🤖 LLM Triage Results</h4>
+                                <ul>
+                                    <li>Confirmed vulnerabilities: {{ triage_result.confirmed_count }}</li>
+                                    <li>False positives: {{ triage_result.false_positive_count }}</li>
+                                    <li>Need manual review: {{ triage_result.needs_review_count }}</li>
+                                    <li>Analysis time: {{ triage_result.llm_analysis_time_seconds | format_duration }}</li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        {% if triage_result and triage_result.analysis_summary %}
+                        <div class="analysis-summary">
+                            <h4>📋 Analysis Summary</h4>
+                            <pre>{{ triage_result.analysis_summary }}</pre>
+                        </div>
+                        {% endif %}
+                    </div>
+                </details>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>Generated by <strong>{{ platform_name }}</strong> on {{ generation_timestamp.strftime('%Y-%m-%d at %H:%M:%S') }}</p>
+                <p>For questions about this report, contact your security team.</p>
+            </div>
+        </footer>
+    </div>
+
+    {% include 'scripts.html' %}
+</body>
+</html>
