@@ -2,7 +2,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 
 from ..models import ScanResult, Vulnerability, VulnerabilityType, SeverityLevel
@@ -10,8 +10,128 @@ from ..exceptions import ValidationError, ParsingError
 
 logger = logging.getLogger(__name__)
 
+class DuplicateDetector:
+    """
+    🔄 Intelligent duplicate detection system
+    
+    Strategies:
+    - strict: Exact match (file, line, type, description hash)
+    - moderate: Similar location and type (default)
+    - loose: Fuzzy matching on type and description
+    """
+    
+    def __init__(self, strategy: str = 'moderate'):
+        self.strategy = strategy
+        logger.info(f"🔄 Duplicate detector initialized: strategy={strategy}")
+    
+    def remove_duplicates(self, vulnerabilities: List[Vulnerability]) -> tuple[List[Vulnerability], int]:
+        """Remove duplicates, returns (unique_list, removed_count)"""
+        if not vulnerabilities or len(vulnerabilities) <= 1:
+            return vulnerabilities, 0
+        
+        original_count = len(vulnerabilities)
+        logger.info(f"🔍 Checking {original_count} vulnerabilities for duplicates ({self.strategy})")
+        
+        if self.strategy == 'strict':
+            unique = self._dedup_strict(vulnerabilities)
+        elif self.strategy == 'loose':
+            unique = self._dedup_loose(vulnerabilities)
+        else:  # moderate
+            unique = self._dedup_moderate(vulnerabilities)
+        
+        removed = original_count - len(unique)
+        if removed > 0:
+            logger.info(f"✅ Removed {removed} duplicates, kept {len(unique)} unique")
+        
+        return unique, removed
+    
+    def _dedup_strict(self, vulnerabilities: List[Vulnerability]) -> List[Vulnerability]:
+        """Exact match on file+line+type+description"""
+        seen: set = set()
+        unique = []
+        
+        for vuln in vulnerabilities:
+            sig = f"{vuln.file_path}|{vuln.line_number}|{vuln.type.value}|{hash(vuln.description)}"
+            if sig not in seen:
+                seen.add(sig)
+                unique.append(vuln)
+        
+        return unique
+    
+    def _dedup_moderate(self, vulnerabilities: List[Vulnerability]) -> List[Vulnerability]:
+        """Same file+type, nearby location (±5 lines), similar description"""
+        from collections import defaultdict
+        
+        groups = defaultdict(list)
+        for vuln in vulnerabilities:
+            key = (vuln.file_path, vuln.type.value)
+            groups[key].append(vuln)
+        
+        unique = []
+        for group_vulns in groups.values():
+            group_vulns.sort(key=lambda v: v.line_number)
+            kept = []
+            
+            for vuln in group_vulns:
+                is_dup = False
+                for kept_vuln in kept:
+                    if abs(vuln.line_number - kept_vuln.line_number) <= 5:
+                        similarity = self._similarity(vuln.description, kept_vuln.description)
+                        if similarity > 0.8:
+                            is_dup = True
+                            break
+                
+                if not is_dup:
+                    kept.append(vuln)
+            
+            unique.extend(kept)
+        
+        return unique
+    
+    def _dedup_loose(self, vulnerabilities: List[Vulnerability]) -> List[Vulnerability]:
+        """Same type, similar description (70%+)"""
+        from collections import defaultdict
+        
+        groups = defaultdict(list)
+        for vuln in vulnerabilities:
+            groups[vuln.type.value].append(vuln)
+        
+        unique = []
+        for group_vulns in groups.values():
+            kept = []
+            for vuln in group_vulns:
+                is_dup = False
+                for kept_vuln in kept:
+                    if self._similarity(vuln.description, kept_vuln.description) > 0.7:
+                        is_dup = True
+                        break
+                
+                if not is_dup:
+                    kept.append(vuln)
+            
+            unique.extend(kept)
+        
+        return unique
+    
+    def _similarity(self, text1: str, text2: str) -> float:
+        """Simple Jaccard similarity"""
+        if text1 == text2:
+            return 1.0
+        
+        tokens1 = set(text1.lower().split())
+        tokens2 = set(text2.lower().split())
+        
+        if not tokens1 or not tokens2:
+            return 0.0
+        
+        intersection = len(tokens1 & tokens2)
+        union = len(tokens1 | tokens2)
+        
+        return intersection / union if union > 0 else 0.0
+
+
 class UnifiedVulnerabilityParser:
-    """Parser unificado que maneja múltiples formatos - CORREGIDO"""
+    """Parser unificado que maneja múltiples formatos"""
     
     def parse(self, data: Dict[str, Any], tool_hint: Optional[str] = None) -> List[Vulnerability]:
         """Parse vulnerabilities from any supported format"""
@@ -56,6 +176,18 @@ class UnifiedVulnerabilityParser:
                     return data[key]
         
         return []
+    
+    def _extract_cvss(self, finding: Dict[str, Any]) -> Optional[float]:
+        """Extraer CVSS de múltiples ubicaciones posibles"""
+        for key in ['cvss_score', 'cvss', 'score']:
+            if key in finding:
+                try:
+                    score = float(finding[key])
+                    if 0 <= score <= 10:
+                        return score
+                except:
+                    pass
+        return None
     
     def _detect_format(self, sample_finding: Dict[str, Any], tool_hint: Optional[str]) -> str:
         """Detect the format of findings"""
@@ -111,7 +243,8 @@ class UnifiedVulnerabilityParser:
             meta={
                 'original_finding': finding,
                 'parser_strategy': 'abap',
-                'parser_version': '3.0'
+                'parser_version': '3.0',
+                'cvss_score': self._extract_cvss(finding)
             }
         )
     
@@ -176,17 +309,43 @@ class UnifiedVulnerabilityParser:
         return mappings.get(severity_upper, SeverityLevel.MEDIUM)
     
     def _extract_code_context(self, location: Dict[str, Any]) -> Optional[str]:
-        """Extract and format code context"""
+        """Extract and format code context - SAFE VERSION"""
         context = location.get('context', [])
         line_content = location.get('line_content', '')
         
         if isinstance(context, list) and context:
-            return '\n'.join(f"{i+1:3d} | {line}" for i, line in enumerate(context) if line)
-        elif line_content:
-            return f">>> {str(line_content).strip()}"
+            # Validar y convertir cada línea a string de forma segura
+            safe_lines = []
+            for i, line in enumerate(context):
+                # Validación robusta
+                if line is None:
+                    continue  # Saltar None
+                elif isinstance(line, (int, float, bool)):
+                    line_str = str(line)  # Convertir números a string
+                elif isinstance(line, dict):
+                    line_str = str(line)  # Convertir dict a string
+                elif isinstance(line, str):
+                    line_str = line
+                else:
+                    line_str = repr(line)  # Fallback para tipos extraños
+                
+                # Solo agregar si no está vacío
+                if line_str.strip():
+                    safe_lines.append(f"{i+1:3d} | {line_str}")
+            
+            if safe_lines:
+                return '\n'.join(safe_lines)
+        
+        # Fallback: usar line_content si existe
+        if line_content:
+            # Validar line_content también
+            if isinstance(line_content, str):
+                return f">>> {line_content.strip()}"
+            else:
+                return f">>> {str(line_content).strip()}"
         
         return None
-    
+
     def _normalize_cwe(self, cwe: Optional[str]) -> Optional[str]:
         """Normalize CWE ID format"""
         if not cwe:
@@ -213,11 +372,13 @@ class UnifiedVulnerabilityParser:
         return None
 
 class ScannerService:
-    """Servicio de escaneo optimizado y consolidado - CORREGIDO"""
+    """Servicio de escaneo optimizado y consolidado"""
     
-    def __init__(self, cache=None):  # Tipo Optional removido para evitar import circular
+    def __init__(self, cache=None, enable_deduplication: bool = True, dedup_strategy: str = 'moderate'):
         self.parser = UnifiedVulnerabilityParser()
         self.cache = cache
+        self.dedup_detector = DuplicateDetector(dedup_strategy) if enable_deduplication else None
+
     
     async def scan_file(self, 
                        file_path: str,
@@ -241,6 +402,11 @@ class ScannerService:
         # Load and parse
         raw_data = self._load_file(file_path)
         vulnerabilities = self.parser.parse(raw_data, tool_hint)
+        removed_dups = 0
+        if self.dedup_detector:
+            vulnerabilities, removed_dups = self.dedup_detector.remove_duplicates(vulnerabilities)
+            if removed_dups > 0:
+                logger.info(f"🔄 Removed {removed_dups} duplicates")
         
         # Create result
         file_info = {
@@ -248,7 +414,8 @@ class ScannerService:
             'full_path': str(Path(file_path).absolute()),
             'size_bytes': Path(file_path).stat().st_size,
             'language': language,
-            'tool_hint': tool_hint
+            'tool_hint': tool_hint,
+            'duplicates_removed': removed_dups  # 🆕 AÑADIR ESTA LÍNEA
         }
         
         scan_duration = (datetime.now() - start_time).total_seconds()
@@ -322,3 +489,82 @@ class ScannerService:
             logger.debug("Scan result cached")
         except Exception as e:
             logger.warning(f"Cache save failed: {e}")
+
+# ============================================================================
+# AÑADIR ESTA CLASE ANTES DE ScannerService
+# ============================================================================
+
+class DuplicateDetector:
+    """Detector de duplicados con 3 estrategias"""
+    
+    def __init__(self, strategy: str = 'moderate'):
+        self.strategy = strategy.lower()
+    
+    def remove_duplicates(self, vulnerabilities: List[Vulnerability]) -> Tuple[List[Vulnerability], int]:
+        """Retorna (lista_sin_duplicados, cantidad_removida)"""
+        if len(vulnerabilities) <= 1:
+            return vulnerabilities, 0
+        
+        original = len(vulnerabilities)
+        
+        if self.strategy == 'strict':
+            unique = self._strict(vulnerabilities)
+        elif self.strategy == 'loose':
+            unique = self._loose(vulnerabilities)
+        else:
+            unique = self._moderate(vulnerabilities)
+        
+        return unique, original - len(unique)
+    
+    def _strict(self, vulns):
+        """Mismo file+line+type+description"""
+        seen = set()
+        unique = []
+        for v in vulns:
+            key = f"{v.file_path}|{v.line_number}|{v.type.value}|{hash(v.description)}"
+            if key not in seen:
+                seen.add(key)
+                unique.append(v)
+        return unique
+    
+    def _moderate(self, vulns):
+        """Mismo file+type, ±5 líneas, 80% similar"""
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for v in vulns:
+            groups[(v.file_path, v.type.value)].append(v)
+        
+        unique = []
+        for group in groups.values():
+            group.sort(key=lambda v: v.line_number)
+            kept = []
+            for v in group:
+                if not any(abs(v.line_number - k.line_number) <= 5 and 
+                          self._sim(v.description, k.description) > 0.8 
+                          for k in kept):
+                    kept.append(v)
+            unique.extend(kept)
+        return unique
+    
+    def _loose(self, vulns):
+        """Mismo type, 70% similar"""
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for v in vulns:
+            groups[v.type.value].append(v)
+        
+        unique = []
+        for group in groups.values():
+            kept = []
+            for v in group:
+                if not any(self._sim(v.description, k.description) > 0.7 for k in kept):
+                    kept.append(v)
+            unique.extend(kept)
+        return unique
+    
+    def _sim(self, a: str, b: str) -> float:
+        """Jaccard similarity"""
+        if a == b:
+            return 1.0
+        t1, t2 = set(a.lower().split()), set(b.lower().split())
+        return len(t1 & t2) / len(t1 | t2) if t1 and t2 else 0.0

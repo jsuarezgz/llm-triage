@@ -154,19 +154,28 @@ class RemediationService:
         
         customized_steps = []
         for step in template_steps:
-            # Format step content with vulnerability specifics
-            customized_step = RemediationStep(
-                step_number=step.step_number,
-                title=step.title.format(
+            try:
+                # Intentar formatear con placeholders
+                formatted_title = step.title.format(
                     file=vulnerability.file_path,
                     line=vulnerability.line_number,
                     vuln_type=vulnerability.type.value
-                ),
-                description=step.description.format(
+                )
+                formatted_description = step.description.format(
                     vulnerability_id=vulnerability.id,
                     file_path=vulnerability.file_path,
                     severity=vulnerability.severity.value
-                ),
+                )
+            except KeyError as e:
+                # Si no hay placeholders, usar texto original
+                logger.debug(f"No format placeholders in step {step.step_number}: {e}")
+                formatted_title = step.title
+                formatted_description = step.description
+            
+            customized_step = RemediationStep(
+                step_number=step.step_number,
+                title=formatted_title,
+                description=formatted_description,
                 code_example=step.code_example,
                 estimated_minutes=step.estimated_minutes,
                 difficulty=step.difficulty,

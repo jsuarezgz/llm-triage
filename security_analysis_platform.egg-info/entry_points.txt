@@ -1,0 +1,2 @@
+[console_scripts]
+security-analyzer = application.cli:cli

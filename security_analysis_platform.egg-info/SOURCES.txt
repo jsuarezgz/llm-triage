@@ -1,0 +1,8 @@
+README.md
+setup.py
+security_analysis_platform.egg-info/PKG-INFO
+security_analysis_platform.egg-info/SOURCES.txt
+security_analysis_platform.egg-info/dependency_links.txt
+security_analysis_platform.egg-info/entry_points.txt
+security_analysis_platform.egg-info/requires.txt
+security_analysis_platform.egg-info/top_level.txt

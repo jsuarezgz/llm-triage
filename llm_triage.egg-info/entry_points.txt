@@ -1,0 +1,3 @@
+[console_scripts]
+llm-triage = application.cli:cli
+vuln-triage = application.cli:cli

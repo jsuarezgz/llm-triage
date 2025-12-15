@@ -53,8 +53,11 @@ class ServiceFactory:
             logger.info(f"LLM provider available: {self.settings.get_available_llm_provider()}")
     
     def create_scanner_service(self) -> ScannerService:
-        """Create configured scanner service"""
-        return ScannerService(cache=self.cache)
+        return ScannerService(
+            cache=self.cache,
+            enable_deduplication=getattr(self, 'enable_dedup', True),
+            dedup_strategy=getattr(self, 'dedup_strategy', 'moderate')
+        )
     
     def create_llm_client(self) -> Optional[LLMClient]:
         """Create LLM client with debug control"""
@@ -78,7 +81,7 @@ class ServiceFactory:
         except Exception as e:
             logger.error(f"Failed to create LLM client: {e}")
             return None
-    
+   
     def create_triage_service(self) -> Optional[TriageService]:
         """Create triage service with LLM client"""
         llm_client = self.create_llm_client()

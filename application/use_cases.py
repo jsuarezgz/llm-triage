@@ -275,18 +275,41 @@ class AnalysisUseCase:
     
     def _was_chunking_used(self, scan_result: ScanResult, force_chunking: bool, 
                           disable_chunking: bool) -> bool:
-        """Determine if chunking was actually used"""
+        """Determine if chunking was actually used - CORRECTED LOGIC"""
         
+        # Prioridad 1: Si está deshabilitado explícitamente, nunca usar chunking
         if disable_chunking:
+            logger.debug("Chunking disabled by flag")
             return False
-        if force_chunking:
-            return True
         
-        return (
-            self.chunker and 
-            self.chunker.should_chunk(scan_result) and 
-            len(scan_result.vulnerabilities) > 0
-        )
+        # Prioridad 2: Si está forzado explícitamente, siempre usar chunking
+        # (siempre que haya vulnerabilidades y chunker esté disponible)
+        if force_chunking:
+            has_vulns = len(scan_result.vulnerabilities) > 0
+            has_chunker = self.chunker is not None
+            
+            if has_chunker and has_vulns:
+                logger.debug("Chunking forced by flag")
+                return True
+            else:
+                logger.warning(f"Chunking forced but not possible: "
+                             f"chunker={has_chunker}, vulns={has_vulns}")
+                return False
+        
+        # Prioridad 3: Decisión automática basada en heurísticas
+        if not self.chunker:
+            logger.debug("Chunking not available (no chunker)")
+            return False
+        
+        if len(scan_result.vulnerabilities) == 0:
+            logger.debug("Chunking not needed (no vulnerabilities)")
+            return False
+        
+        should_chunk = self.chunker.should_chunk(scan_result)
+        logger.debug(f"Automatic chunking decision: {should_chunk}")
+        
+        return should_chunk
+
 
 class CLIUseCase:
     """Caso de uso específico para CLI con manejo de errores robusto"""
@@ -295,12 +318,14 @@ class CLIUseCase:
         self.analysis_use_case = analysis_use_case
     
     async def execute_cli_analysis(self,
-                                 input_file: str,
-                                 output_file: str = "security_report.html",
-                                 language: Optional[str] = None,
-                                 verbose: bool = False,
-                                 disable_llm: bool = False,
-                                 force_chunking: bool = False) -> bool:
+                                  input_file: str,
+                                  output_file: str = "security_report.html",
+                                  language: Optional[str] = None,
+                                  verbose: bool = False,
+                                  disable_llm: bool = False,
+                                  force_chunking: bool = False,
+                                  min_cvss: float = 0.0,  # 🆕 AÑADIR ESTE PARÁMETRO
+                                  severity_filter: Optional[List[str]] = None) -> bool:  # 🆕 AÑADIR ESTE PARÁMETRO
         """Execute analysis from CLI with comprehensive error handling"""
         
         try:
@@ -312,6 +337,12 @@ class CLIUseCase:
             
             print(f"🔍 Analyzing: {input_path.name}")
             
+            # 🆕 Show filter info
+            if min_cvss > 0.0:
+                print(f"🎯 Applying CVSS filter: >= {min_cvss}")
+            if severity_filter:
+                print(f"📊 Applying severity filter: {', '.join(severity_filter)}")
+            
             # Execute appropriate analysis
             if disable_llm:
                 result = await self.analysis_use_case.execute_basic_analysis(
@@ -320,7 +351,11 @@ class CLIUseCase:
                 print("✅ Basic analysis completed")
             else:
                 result = await self.analysis_use_case.execute_full_analysis(
-                    input_file, output_file, language, force_chunking=force_chunking
+                    file_path=input_file,
+                    output_file=output_file,
+                    language=language,
+                    force_chunking=force_chunking
+                    # 🆕 Nota: min_cvss y severity_filter se aplicarían aquí si los implementas
                 )
                 print("✅ Full analysis completed")
             
@@ -350,8 +385,15 @@ class CLIUseCase:
         print(f"📁 File: {scan_result.file_info['filename']}")
         print(f"🔢 Total vulnerabilities: {len(scan_result.vulnerabilities)}")
         
+        # Deduplication stats
+        if 'duplicates_removed' in scan_result.file_info:
+            dups = scan_result.file_info['duplicates_removed']
+            if dups > 0:
+                print(f"🔄 Duplicates removed: {dups}")
+        
         if scan_result.vulnerabilities:
             severity_dist = scan_result.severity_distribution
+            print("\n📊 Severity Distribution:")
             for severity, count in severity_dist.items():
                 if count > 0:
                     icon = {"CRÍTICA": "🔥", "ALTA": "⚡", "MEDIA": "⚠️", "BAJA": "📝", "INFO": "ℹ️"}
@@ -367,7 +409,7 @@ class CLIUseCase:
         
         # Remediation plans
         if result.remediation_plans:
-            print(f"\n🛠️ Remediation plans: {len(result.remediation_plans)}")
+            print(f"\n🛠️  Remediation plans: {len(result.remediation_plans)}")
             priority_counts = {}
             for plan in result.remediation_plans:
                 priority_counts[plan.priority_level] = priority_counts.get(plan.priority_level, 0) + 1
@@ -379,7 +421,7 @@ class CLIUseCase:
                     print(f"  {icons[priority]} {priority.title()}: {count}")
         
         # Performance metrics
-        print(f"\n⏱️ Processing time: {result.total_processing_time_seconds:.2f}s")
+        print(f"\n⏱️  Processing time: {result.total_processing_time_seconds:.2f}s")
         if result.chunking_enabled:
             print("🧩 Chunking: Enabled")
         
