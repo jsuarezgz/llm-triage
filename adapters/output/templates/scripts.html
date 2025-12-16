@@ -29,8 +29,8 @@ function initializeAnimations() {
         });
     }, observerOptions);
 
-    // Apply to vulnerability cards
-    document.querySelectorAll('.vulnerability-card, .remediation-card').forEach(function(el) {
+    // Apply to analysis pairs
+    document.querySelectorAll('.analysis-pair').forEach(function(el) {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';
         el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
@@ -40,18 +40,19 @@ function initializeAnimations() {
 
 function setupCopyFunctionality() {
     // Add copy buttons to vulnerability IDs and CWE links
-    document.querySelectorAll('.meta-value').forEach(function(element) {
+    document.querySelectorAll('.meta-text-small, .meta-link').forEach(function(element) {
         const text = element.textContent.trim();
         
         if (text.match(/^(VULN-|ABAP-|CWE-)/)) {
             element.style.cursor = 'pointer';
             element.title = 'Click to copy ' + text;
             
-            element.addEventListener('click', function() {
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
                 copyToClipboard(text);
                 showToast('✅ Copied: ' + text);
             });
-        }
+			        }
     });
 }
 
@@ -97,14 +98,14 @@ function setupKeyboardNavigation() {
 }
 
 function filterVulnerabilities(query) {
-    const cards = document.querySelectorAll('.vulnerability-card');
+    const cards = document.querySelectorAll('.analysis-pair');
     let visibleCount = 0;
     
     cards.forEach(function(card) {
         const text = card.textContent.toLowerCase();
         const isVisible = query === '' || text.includes(query);
         
-        card.style.display = isVisible ? 'block' : 'none';
+        card.style.display = isVisible ? 'grid' : 'none';
         if (isVisible) visibleCount++;
     });
     
@@ -213,7 +214,7 @@ function logReportStatistics() {
     console.log('⚡ Performance Metrics:');
     console.log('  • DOM Ready:', performance.now().toFixed(2) + 'ms');
     console.log('  • Interactive elements:', document.querySelectorAll('[onclick], [data-action]').length);
-    console.log('  • Vulnerability cards:', document.querySelectorAll('.vulnerability-card').length);
+    console.log('  • Vulnerability cards:', document.querySelectorAll('.analysis-pair').length);
 }
 
 // CSS animations for toasts

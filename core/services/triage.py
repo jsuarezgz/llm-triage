@@ -1,4 +1,14 @@
 # core/services/triage.py
+"""
+Triage Service - Simplified
+===========================
+
+Responsibilities:
+- Orchestrate vulnerability triage
+- Handle chunked analysis
+- Create conservative fallbacks
+"""
+
 import logging
 import asyncio
 from typing import List, Optional
@@ -10,35 +20,54 @@ from shared.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
+
 class TriageService:
-    """Servicio de triaje optimizado con fallbacks inteligentes"""
+    """Simplified triage service with clean dependencies"""
     
-    def __init__(self, llm_client: LLMClient, metrics: Optional[MetricsCollector] = None):
+    def __init__(
+        self,
+        llm_client: LLMClient,
+        metrics: Optional[MetricsCollector] = None
+    ):
         self.llm_client = llm_client
         self.metrics = metrics
     
-    async def analyze_vulnerabilities(self, 
-                                    vulnerabilities: List[Vulnerability],
-                                    language: Optional[str] = None,
-                                    chunk_id: Optional[int] = None) -> TriageResult:
-        """Analyze vulnerabilities with intelligent triage"""
+    async def analyze_vulnerabilities(
+        self,
+        vulnerabilities: List[Vulnerability],
+        language: Optional[str] = None,
+        chunk_id: Optional[int] = None
+    ) -> TriageResult:
+        """
+        Analyze vulnerabilities with LLM triage
         
+        Args:
+            vulnerabilities: List of vulnerabilities to analyze
+            language: Programming language
+            chunk_id: Optional chunk identifier
+        
+        Returns:
+            TriageResult with decisions
+        """
+        # Handle empty list
         if not vulnerabilities:
             return self._create_empty_result()
         
         start_time = asyncio.get_event_loop().time()
         
         try:
-            logger.info(f"Starting triage analysis for {len(vulnerabilities)} vulnerabilities")
+            logger.info(f"🔍 Analyzing {len(vulnerabilities)} vulnerabilities")
             
-            # Prepare analysis request
-            analysis_request = self._prepare_analysis_request(vulnerabilities, language, chunk_id)
+            # Prepare request
+            request = self._prepare_request(vulnerabilities, language, chunk_id)
             
             # Get LLM analysis
-            llm_response = await self.llm_client.analyze_vulnerabilities(analysis_request)
+            llm_response = await self.llm_client.analyze_vulnerabilities(
+                request, language
+            )
             
-            # Validate and enrich result
-            validated_result = self._validate_and_complete_result(llm_response, vulnerabilities)
+            # Validate and complete result
+            validated = self._validate_result(llm_response, vulnerabilities)
             
             # Record metrics
             analysis_time = asyncio.get_event_loop().time() - start_time
@@ -47,11 +76,9 @@ class TriageService:
                     len(vulnerabilities), analysis_time, True, chunk_id
                 )
             
-            logger.info(f"Triage completed: {validated_result.confirmed_count} confirmed, "
-                       f"{validated_result.false_positive_count} false positives")
+            logger.info(f"✅ Triage complete: {validated.confirmed_count} confirmed")
+            return validated
             
-            return validated_result
-        
         except Exception as e:
             analysis_time = asyncio.get_event_loop().time() - start_time
             if self.metrics:
@@ -59,18 +86,25 @@ class TriageService:
                     len(vulnerabilities), analysis_time, False, chunk_id, str(e)
                 )
             
-            logger.error(f"Triage analysis failed: {e}")
+            logger.error(f"❌ Triage failed: {e}")
             return self._create_fallback_result(vulnerabilities, str(e))
     
-    def _prepare_analysis_request(self, vulnerabilities: List[Vulnerability], 
-                                language: Optional[str], chunk_id: Optional[int]) -> str:
-        """Prepare structured analysis request for LLM"""
-        
+    # ════════════════════════════════════════════════════════════════
+    # PRIVATE HELPERS
+    # ════════════════════════════════════════════════════════════════
+    
+    def _prepare_request(
+        self,
+        vulnerabilities: List[Vulnerability],
+        language: Optional[str],
+        chunk_id: Optional[int]
+    ) -> str:
+        """Prepare structured analysis request"""
         header = f"# VULNERABILITY TRIAGE REQUEST\n"
         if chunk_id:
             header += f"Chunk ID: {chunk_id}\n"
         header += f"Language: {language or 'Unknown'}\n"
-        header += f"Total Vulnerabilities: {len(vulnerabilities)}\n\n"
+        header += f"Total: {len(vulnerabilities)}\n\n"
         
         vuln_blocks = []
         for i, vuln in enumerate(vulnerabilities, 1):
@@ -83,8 +117,7 @@ class TriageService:
 - DESCRIPTION: {vuln.description}"""
             
             if vuln.code_snippet:
-                # Truncate code snippet for LLM context
-                snippet = vuln.code_snippet[:300] + "..." if len(vuln.code_snippet) > 300 else vuln.code_snippet
+                snippet = vuln.code_snippet[:300]
                 block += f"\n- CODE: {snippet}"
             
             if vuln.cwe_id:
@@ -94,37 +127,43 @@ class TriageService:
         
         return header + "\n\n".join(vuln_blocks)
     
-    def _validate_and_complete_result(self, llm_result: TriageResult, 
-                                    original_vulnerabilities: List[Vulnerability]) -> TriageResult:
-        """Validate LLM result and complete missing decisions"""
-        
-        original_ids = {v.id for v in original_vulnerabilities}
+    def _validate_result(
+        self,
+        llm_result: TriageResult,
+        original_vulns: List[Vulnerability]
+    ) -> TriageResult:
+        """Validate and complete LLM result"""
+        original_ids = {v.id for v in original_vulns}
         analyzed_ids = {d.vulnerability_id for d in llm_result.decisions}
         
-        # Add conservative decisions for missing vulnerabilities
+        # Find missing vulnerabilities
         missing_ids = original_ids - analyzed_ids
+        
         if missing_ids:
-            logger.warning(f"LLM missed {len(missing_ids)} vulnerabilities, adding conservative decisions")
+            logger.warning(f"⚠️  LLM missed {len(missing_ids)} vulnerabilities")
             
+            # Add conservative decisions for missing
             for missing_id in missing_ids:
-                missing_vuln = next(v for v in original_vulnerabilities if v.id == missing_id)
-                conservative_decision = self._create_conservative_decision(missing_vuln)
-                llm_result.decisions.append(conservative_decision)
+                vuln = next(v for v in original_vulns if v.id == missing_id)
+                conservative = self._create_conservative_decision(vuln)
+                llm_result.decisions.append(conservative)
         
         return llm_result
     
-    def _create_conservative_decision(self, vulnerability: Vulnerability) -> TriageDecision:
+    def _create_conservative_decision(
+        self,
+        vulnerability: Vulnerability
+    ) -> TriageDecision:
         """Create conservative decision for unanalyzed vulnerability"""
-        
-        # High severity = confirmed, others = manual review
-        if vulnerability.severity in ["CRÍTICA", "ALTA"]:
+        # High severity = confirmed, others = review
+        if vulnerability.is_high_priority:
             decision = AnalysisStatus.CONFIRMED
             confidence = 0.7
-            reasoning = f"Conservative classification - {vulnerability.severity.value} severity assumed confirmed"
+            reasoning = f"Conservative: {vulnerability.severity.value} assumed confirmed"
         else:
             decision = AnalysisStatus.NEEDS_MANUAL_REVIEW
             confidence = 0.5
-            reasoning = f"Conservative classification - requires manual review"
+            reasoning = "Conservative: requires manual review"
         
         return TriageDecision(
             vulnerability_id=vulnerability.id,
@@ -134,16 +173,22 @@ class TriageService:
             llm_model_used="conservative_fallback"
         )
     
-    def _create_fallback_result(self, vulnerabilities: List[Vulnerability], error: str) -> TriageResult:
-        """Create fallback result when LLM analysis fails"""
+    def _create_fallback_result(
+        self,
+        vulnerabilities: List[Vulnerability],
+        error: str
+    ) -> TriageResult:
+        """Create fallback result when LLM fails"""
+        logger.warning("⚠️  Creating conservative fallback result")
         
-        logger.warning("Creating conservative fallback triage result")
-        
-        decisions = [self._create_conservative_decision(vuln) for vuln in vulnerabilities]
+        decisions = [
+            self._create_conservative_decision(vuln)
+            for vuln in vulnerabilities
+        ]
         
         return TriageResult(
             decisions=decisions,
-            analysis_summary=f"Conservative fallback analysis due to LLM error: {error}",
+            analysis_summary=f"Conservative fallback due to LLM error: {error}",
             llm_analysis_time_seconds=0.0
         )
     

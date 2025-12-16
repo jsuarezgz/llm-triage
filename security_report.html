@@ -1,13 +1,16 @@
- <!-- adapters/output/templates/report.html -->
+<!-- adapters/output/templates/report.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🛡️ Security Analysis Platform v3.0 - Report</title>
+    <title>🛡️ Security Analysis Platform v3.0 - Security Report</title>
 <!-- adapters/output/templates/styles.html -->
 <style>
-/* === RESET & BASE === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESET & BASE STYLES */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 * {
     margin: 0;
     padding: 0;
@@ -22,9 +25,12 @@ body {
     min-height: 100vh;
 }
 
-/* === LAYOUT === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* LAYOUT */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 20px auto;
     background: white;
     border-radius: 16px;
@@ -32,7 +38,10 @@ body {
     overflow: hidden;
 }
 
-/* === HEADER === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* HEADER */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .header {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
     color: white;
@@ -90,7 +99,10 @@ body {
     font-weight: 600;
 }
 
-/* === CONTENT === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* CONTENT & SECTIONS */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .content {
     padding: 2rem;
 }
@@ -119,7 +131,10 @@ body {
     background: linear-gradient(90deg, #4f46e5, #7c3aed);
 }
 
-/* === METRICS === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* METRICS (Executive Summary) */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -175,67 +190,69 @@ body {
     letter-spacing: 0.05em;
 }
 
-/* === VULNERABILITIES === */
-.vulnerabilities-list {
+.summary-info {
+    background: #f0f9ff;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid #0ea5e9;
+}
+
+.summary-info p {
+    margin-bottom: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* GRID LAYOUT: VULNERABILITIES + REMEDIATION */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+.vuln-remediation-grid {
     display: grid;
-    gap: 1.5rem;
+    gap: 2rem;
+    margin-top: 2rem;
 }
 
-.vulnerability-card {
+.analysis-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
     background: white;
-    border: 1px solid #e5e7eb;
     border-radius: 16px;
-    overflow: hidden;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-left: 6px solid #6b7280;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.vulnerability-card:hover {
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+.analysis-pair:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
 }
 
-.vulnerability-card.critical {
-    border-left: 6px solid #dc2626;
+/* Border colors by severity */
+.analysis-pair.critical-border { border-left-color: #dc2626; }
+.analysis-pair.high-border { border-left-color: #ea580c; }
+.analysis-pair.medium-border { border-left-color: #d97706; }
+.analysis-pair.low-border { border-left-color: #16a34a; }
+.analysis-pair.info-border { border-left-color: #0ea5e9; }
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* LEFT SIDE: Vulnerability */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.vulnerability-side {
+    border-right: 2px solid #e5e7eb;
+    padding-right: 1.5rem;
 }
 
-.vulnerability-card.high {
-    border-left: 6px solid #ea580c;
+.vuln-header-compact {
+    margin-bottom: 1rem;
 }
 
-.vulnerability-card.medium {
-    border-left: 6px solid #d97706;
-}
-
-.vulnerability-card.low {
-    border-left: 6px solid #16a34a;
-}
-
-.vulnerability-card.info {
-    border-left: 6px solid #0ea5e9;
-}
-
-.vuln-header {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    padding: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.vuln-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
-    flex: 1;
-}
-
-.vuln-badges {
+.vuln-badge-row {
     display: flex;
     gap: 0.5rem;
-    flex-shrink: 0;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .badge {
@@ -277,142 +294,127 @@ body {
     color: white;
 }
 
-.vuln-body {
-    padding: 1.5rem;
+.vuln-title-compact {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.4;
 }
 
-.vuln-meta {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+.vuln-body-compact {
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
-    margin-bottom: 1.5rem;
 }
 
-.meta-item {
-    background: #f8fafc;
+.vuln-meta-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     padding: 0.75rem;
+    background: #f8fafc;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
 }
 
-.meta-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
+.meta-item-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
 }
 
-.meta-value {
+.meta-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.meta-text {
+    color: #475569;
     font-weight: 500;
-    color: #1f2937;
+    word-break: break-all;
 }
 
-.meta-value a {
+.meta-text-small {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-all;
+}
+
+.meta-link {
     color: #4f46e5;
     text-decoration: none;
+    font-weight: 500;
 }
 
-.meta-value a:hover {
+.meta-link:hover {
     text-decoration: underline;
 }
 
-.vuln-description,
-.vuln-code,
-.vuln-remediation {
-    margin-bottom: 1.5rem;
-}
-
-.vuln-description h4,
-.vuln-code h4,
-.vuln-remediation h4 {
-    font-size: 1rem;
+.vuln-description-compact h4,
+.vuln-code-compact h4,
+.vuln-advice-compact h4 {
+    font-size: 0.875rem;
     font-weight: 600;
     color: #374151;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.code-block {
+.vuln-description-compact p {
+    font-size: 0.9rem;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.code-block-compact {
     background: #0f172a;
     color: #e2e8f0;
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 0.75rem;
+    border-radius: 6px;
     font-family: 'JetBrains Mono', 'Fira Code', Monaco, monospace;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     overflow-x: auto;
     line-height: 1.5;
     border: 1px solid #334155;
 }
 
-.advice-content {
+.advice-content-compact {
     background: #dbeafe;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #3b82f6;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
     color: #1e40af;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
 }
 
-/* === NO VULNERABILITIES === */
-.no-vulnerabilities {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    color: white;
-    border-radius: 16px;
+/* ─────────────────────────────────────────────────────────────────────── */
+/* RIGHT SIDE: Remediation Plan */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.remediation-side {
+    padding-left: 1.5rem;
 }
 
-.no-vulns-icon {
-    font-size: 4rem;
+.remediation-header-compact {
     margin-bottom: 1rem;
 }
 
-.no-vulnerabilities h2 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-}
-
-/* === REMEDIATION === */
-.remediation-summary {
-    background: #f0f9ff;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #0ea5e9;
-    margin-bottom: 2rem;
-}
-
-.remediation-plans {
-    display: grid;
-    gap: 2rem;
-}
-
-.remediation-card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.plan-header {
+.plan-priority-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.plan-header h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .priority-badge {
     padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -438,38 +440,71 @@ body {
     color: white;
 }
 
-.plan-meta {
+.complexity-badge {
+    background: #e5e7eb;
+    color: #374151;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.plan-title-compact {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.plan-body-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.plan-stats-row {
     display: flex;
     gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 
-.plan-stat {
-    background: #f3f4f6;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-icon {
+    font-size: 1rem;
+}
+
+.stat-text {
     font-size: 0.875rem;
     font-weight: 500;
+    color: #475569;
 }
 
-.plan-steps {
-    margin-bottom: 1.5rem;
+.plan-steps-compact {
+    margin-top: 0.5rem;
 }
 
-.plan-steps h4 {
-    font-size: 1rem;
+.plan-steps-compact h4 {
+    font-size: 0.875rem;
     font-weight: 600;
-    margin-bottom: 1rem;
     color: #374151;
+    margin-bottom: 0.75rem;
 }
 
-.plan-steps ol {
+.steps-list-compact {
     list-style: none;
     counter-reset: step-counter;
+    padding: 0;
+    margin: 0;
 }
 
-.remediation-step {
+.step-item-compact {
     counter-increment: step-counter;
     margin-bottom: 1rem;
     padding: 1rem;
@@ -480,7 +515,7 @@ body {
     padding-left: 3rem;
 }
 
-.remediation-step::before {
+.step-item-compact::before {
     content: counter(step-counter);
     position: absolute;
     left: 1rem;
@@ -497,37 +532,69 @@ body {
     font-size: 0.875rem;
 }
 
-.step-header {
+.step-header-inline {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 0.5rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
-.step-meta {
-    font-size: 0.75rem;
+.step-header-inline strong {
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.step-meta-badge {
+    font-size: 0.7rem;
     color: #6b7280;
     background: #e5e7eb;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    white-space: nowrap;
 }
 
-.step-description {
+.step-description-text {
     color: #4b5563;
-    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
 }
 
-.step-code {
+.step-code-details {
+    margin-top: 0.5rem;
+}
+
+.code-toggle {
+    cursor: pointer;
+    color: #4f46e5;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 6px;
+    display: inline-block;
+    transition: background 0.2s;
+}
+
+.code-toggle:hover {
+    background: #e5e7eb;
+}
+
+.step-code-example {
     background: #f3f4f6;
     color: #374151;
     padding: 0.75rem;
     border-radius: 6px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     border: 1px solid #d1d5db;
+    overflow-x: auto;
+    margin-top: 0.5rem;
 }
 
-.risk-warning {
+.risk-warning-compact {
     background: #fef2f2;
     padding: 1rem;
     border-radius: 8px;
@@ -535,12 +602,128 @@ body {
     color: #991b1b;
 }
 
-.risk-warning h5 {
+.risk-warning-compact h5 {
     font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.risk-warning-compact p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.plan-references {
+    background: #f0f9ff;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #0ea5e9;
+}
+
+.plan-references h5 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
     margin-bottom: 0.5rem;
 }
 
-/* === TECHNICAL DETAILS === */
+.references-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.references-list li {
+    margin-bottom: 0.25rem;
+}
+
+.references-list a {
+    color: #0ea5e9;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.references-list a:hover {
+    text-decoration: underline;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* NO PLAN AVAILABLE */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.no-plan-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    border: 2px dashed #cbd5e1;
+}
+
+.no-plan-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.no-plan-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.no-plan-card p {
+    color: #64748b;
+    margin-bottom: 1rem;
+}
+
+.manual-review-box {
+    background: #fff7ed;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #f59e0b;
+    text-align: left;
+    margin-top: 1rem;
+}
+
+.manual-review-box strong {
+    display: block;
+    color: #92400e;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.manual-review-box p {
+    color: #78350f;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* NO VULNERABILITIES */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+.no-vulnerabilities {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border-radius: 16px;
+}
+
+.no-vulns-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.no-vulnerabilities h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* TECHNICAL DETAILS */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .technical-details {
     background: #f8fafc;
     border: 1px solid #e5e7eb;
@@ -627,7 +810,10 @@ body {
     word-wrap: break-word;
 }
 
-/* === FOOTER === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* FOOTER */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .footer {
     background: #1f2937;
     color: white;
@@ -639,7 +825,29 @@ body {
     margin-bottom: 0.5rem;
 }
 
-/* === RESPONSIVE DESIGN === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE DESIGN */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+    .analysis-pair {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .vulnerability-side {
+        border-right: none;
+        border-bottom: 2px solid #e5e7eb;
+        padding-right: 0;
+        padding-bottom: 1.5rem;
+    }
+    
+    .remediation-side {
+        padding-left: 0;
+        padding-top: 1.5rem;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         margin: 10px;
@@ -666,32 +874,20 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .vuln-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .vuln-meta {
-        grid-template-columns: 1fr;
-    }
-    
-    .plan-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .plan-meta {
+    .vuln-badge-row {
         flex-direction: column;
     }
     
-    .step-header {
+    .step-header-inline {
         flex-direction: column;
         align-items: flex-start;
     }
 }
 
-/* === ANIMATIONS === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* ANIMATIONS */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -707,7 +903,14 @@ body {
     animation: fadeIn 0.6s ease-out;
 }
 
-/* === PRINT STYLES === */
+.analysis-pair {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* PRINT STYLES */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 @media print {
     body {
         background: white;
@@ -736,16 +939,23 @@ body {
         display: none;
     }
     
-    .vulnerability-card {
+    .analysis-pair {
         break-inside: avoid;
         page-break-inside: avoid;
         margin-bottom: 1rem;
+    }
+    
+    .step-code-details[open] {
+        display: block;
     }
 }
 </style></head>
 <body>
     <div class="container">
-        <!-- Header -->
+        
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- HEADER -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
         <header class="header">
             <div class="header-content">
                 <h1>🛡️ Security Analysis Report</h1>
@@ -771,7 +981,10 @@ body {
         </header>
 
         <main class="content">
-            <!-- Executive Summary -->
+            
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- EXECUTIVE SUMMARY -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             <section class="section">
                 <h2 class="section-title">📈 Executive Summary</h2>
                 
@@ -784,276 +997,349 @@ body {
                 </div>
 
                 <div class="summary-info">
-                    <p><strong>Analysis completed in 31.47s</strong></p>
+                    <p><strong>Analysis completed in 40.06s</strong></p>
                     <p>🤖 AI-powered triage analyzed 2 vulnerabilities</p>
                 </div>
             </section>
 
-            <!-- Vulnerabilities -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- VULNERABILITIES + REMEDIATION GRID -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             <section class="section">
-                <h2 class="section-title">🚨 Security Vulnerabilities</h2>
+                <h2 class="section-title">🔐 Security Analysis & Remediation</h2>
                 
-                <div class="vulnerabilities-list">
-                    <div class="vulnerability-card high">
-                        <div class="vuln-header">
-                            <h3 class="vuln-title">
-                                📄 1. Directory Traversal
-                            </h3>
-                            <div class="vuln-badges">
-                                <span class="badge severity-high">
-                                    ALTA
-                                </span>
-                                <span class="badge type-badge">Directory Traversal</span>
-                            </div>
-                        </div>
+                <div class="vuln-remediation-grid">
+                    <div class="analysis-pair high-border">
                         
-                        <div class="vuln-body">
-                            <div class="vuln-meta">
-                                <div class="meta-item">
-                                    <span class="meta-label">📍 Location</span>
-                                    <span class="meta-value">test-code\YAL0029.TXT:679</span>
+                        <!-- ─────────────────────────────────────────────── -->
+                        <!-- LEFT: VULNERABILITY CARD -->
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="vulnerability-side">
+                            <div class="vuln-header-compact">
+                                <div class="vuln-badge-row">
+                                    <span class="badge severity-high">
+                                        ⚡ ALTA
+                                    </span>
+                                    <span class="badge type-badge">Directory Traversal</span>
                                 </div>
-                                <div class="meta-item">
-                                    <span class="meta-label">🆔 ID</span>
-                                    <span class="meta-value">abap-directory-traversal-001</span>
-                                </div>
-                                <div class="meta-item">
-                                    <span class="meta-label">🔗 CWE</span>
-                                    <span class="meta-value">
-                                        <a href="https://cwe.mitre.org/data/definitions/22.html" target="_blank">
+                                <h3 class="vuln-title-compact">
+                                    1. Directory Traversal
+                                </h3>
+                            </div>
+                            
+                            <div class="vuln-body-compact">
+                                <!-- Meta Information -->
+                                <div class="vuln-meta-compact">
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">📍</span>
+                                        <span class="meta-text">test-code\YAL0029.TXT:679</span>
+                                    </div>
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">🔗</span>
+                                        <a href="https://cwe.mitre.org/data/definitions/22.html" 
+                                           target="_blank" class="meta-link">
                                             CWE-22
                                         </a>
-                                    </span>
+                                    </div>
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">🆔</span>
+                                        <span class="meta-text-small">abap-directory-traversal-001</span>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div class="vuln-description">
-                                <h4>📝 Description</h4>
-                                <p>File operation with unvalidated path may allow directory traversal</p>
-                            </div>
-                            
-                            <div class="vuln-code">
-                                <h4>💻 Code Context</h4>
-                                <pre class="code-block">  2 |      ELSEIF rb_ser EQ abap_true.
+                                
+                                <!-- Description -->
+                                <div class="vuln-description-compact">
+                                    <h4>📝 Description</h4>
+                                    <p>File operation with unvalidated path may allow directory traversal</p>
+                                </div>
+                                
+                                <!-- Code Snippet -->
+                                <div class="vuln-code-compact">
+                                    <h4>💻 Vulnerable Code</h4>
+                                    <pre class="code-block-compact">  2 |      ELSEIF rb_ser EQ abap_true.
   3 |        CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
   4 | &gt;&gt;     OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
   5 |        IF sy-subrc EQ 0.
   6 |          lf_fich_open = abap_true.
   7 |        ELSE.</pre>
-                            </div>
-                            
-                            <div class="vuln-remediation">
-                                <h4>💡 Remediation Advice</h4>
-                                <div class="advice-content">
-    Prevent directory traversal:
-    - Validate file paths using FILE_VALIDATE_NAME
-    - Use absolute paths with proper validation
-    - Implement allowlist for accessible directories
-    - Check sy-subrc after FILE_VALIDATE_NAME call
-    
-    Example:
-    CALL FUNCTION &#39;FILE_VALIDATE_NAME&#39;
-      EXPORTING logical_filename = file_path
-      EXCEPTIONS OTHERS = 1.
-    IF sy-subrc = 0.
-      &#34; Safe to use file_path
-    ENDIF.
-    </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="vulnerability-card high">
-                        <div class="vuln-header">
-                            <h3 class="vuln-title">
-                                📄 2. Directory Traversal
-                            </h3>
-                            <div class="vuln-badges">
-                                <span class="badge severity-high">
-                                    ALTA
-                                </span>
-                                <span class="badge type-badge">Directory Traversal</span>
+                                </div>
+                                
+                                <!-- Quick Advice (if no full plan) -->
                             </div>
                         </div>
                         
-                        <div class="vuln-body">
-                            <div class="vuln-meta">
-                                <div class="meta-item">
-                                    <span class="meta-label">📍 Location</span>
-                                    <span class="meta-value">test-code\YAL0029.TXT:780</span>
+                        <!-- ─────────────────────────────────────────────── -->
+                        <!-- RIGHT: REMEDIATION PLAN -->
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="remediation-side">
+                                <div class="remediation-header-compact">
+                                    <div class="plan-priority-row">
+                                        <span class="priority-badge priority-high">
+                                            HIGH
+                                        </span>
+                                        <span class="complexity-badge">
+                                            Complexity: 7.700000000000001/10
+                                        </span>
+                                    </div>
+                                    <h3 class="plan-title-compact">
+                                        🛠️ Remediation Plan
+                                    </h3>
                                 </div>
-                                <div class="meta-item">
-                                    <span class="meta-label">🆔 ID</span>
-                                    <span class="meta-value">abap-directory-traversal-001</span>
+                                
+                                <div class="plan-body-compact">
+                                    <!-- Plan Stats -->
+                                    <div class="plan-stats-row">
+                                        <div class="stat-item">
+                                            <span class="stat-icon">📋</span>
+                                            <span class="stat-text">2 steps</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-icon">⏱️</span>
+                                            <span class="stat-text">
+                                                75 min
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Implementation Steps -->
+                                    <div class="plan-steps-compact">
+                                        <h4>Implementation Steps:</h4>
+                                        <ol class="steps-list-compact">
+                                            <li class="step-item-compact">
+                                                <div class="step-header-inline">
+                                                    <strong>Validate and Normalize File Paths</strong>
+                                                    <span class="step-meta-badge">
+                                                        45min • medium
+                                                    </span>
+                                                </div>
+                                                <p class="step-description-text">La vulnerabilidad de Directory Traversal se produce cuando un atacante puede manipular la ruta de un archivo para acceder a directorios o archivos fuera del directorio raíz del aplicativo. Esto pue...</p>
+                                                <details class="step-code-details">
+                                                    <summary class="code-toggle">💻 View Code Example</summary>
+                                                    <pre class="step-code-example">BEFORE:
+CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
+OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
+
+AFTER:
+DATA: lv_normalized_path TYPE string.
+lv_normalized_path = cl_http_utility=&gt;if_http_utility~normalize_url( p_path &amp;&amp; &#39;/&#39; &amp;&amp; p_nfich ).
+IF lv_normalized_path CS &#39;/../&#39;.
+  MESSAGE &#39;Ruta de archivo no válida&#39; TYPE &#39;E&#39;.
+ELSE.
+  OPEN DATASET lv_normalized_path FOR OU...</pre>
+                                                </details>
+                                            </li>
+                                            <li class="step-item-compact">
+                                                <div class="step-header-inline">
+                                                    <strong>Implementar Comprobación de Ruta de Archivo</strong>
+                                                    <span class="step-meta-badge">
+                                                        30min • easy
+                                                    </span>
+                                                </div>
+                                                <p class="step-description-text">Además de normalizar las rutas de los archivos, es importante implementar una comprobación adicional para asegurarse de que la ruta del archivo se encuentra dentro del directorio raíz permitido. Es...</p>
+                                                <details class="step-code-details">
+                                                    <summary class="code-toggle">💻 View Code Example</summary>
+                                                    <pre class="step-code-example">BEFORE:
+OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
+
+AFTER:
+DATA: lv_root_path TYPE string VALUE &#39;/path/to/root/directory/&#39;.
+IF lv_normalized_path CA lv_root_path.
+  OPEN DATASET lv_normalized_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
+ELSE.
+  MESSAGE &#39;Ruta de archivo no válida&#39; TYPE &#39;E&#39;.
+ENDIF.</pre>
+                                                </details>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                    
+                                    <!-- Risk Warning -->
+                                    <div class="risk-warning-compact">
+                                        <h5>⚠️ Risk if not fixed:</h5>
+                                        <p>Si no se corrige esta vulnerabilidad, un atacante podría acceder a archivos o directorios sensibles fuera del directorio raíz del aplicativo, lo que podría llevar a una violación de la seguridad y posibles daños a la organización. Un ejemplo de esto es el CVE-2021-44228, donde una vulnerabilidad de Directory Traversal en el software de gestión de contenido permitió a los atacantes acceder a archivos sensibles en el servidor.</p>
+                                    </div>
+                                    
+                                    <!-- References -->
+                                    <div class="plan-references">
+                                        <h5>📚 References:</h5>
+                                        <ul class="references-list">
+                                            <li><a href="CVE-2021-44228" target="_blank">CVE-2021-44228</a></li>
+                                            <li><a href="OWASP Directory Traversal" target="_blank">OWASP Directory Traversal</a></li>
+                                        </ul>
+                                    </div>
                                 </div>
-                                <div class="meta-item">
-                                    <span class="meta-label">🔗 CWE</span>
-                                    <span class="meta-value">
-                                        <a href="https://cwe.mitre.org/data/definitions/22.html" target="_blank">
+                        </div>
+                        
+                    </div>
+                    <div class="analysis-pair high-border">
+                        
+                        <!-- ─────────────────────────────────────────────── -->
+                        <!-- LEFT: VULNERABILITY CARD -->
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="vulnerability-side">
+                            <div class="vuln-header-compact">
+                                <div class="vuln-badge-row">
+                                    <span class="badge severity-high">
+                                        ⚡ ALTA
+                                    </span>
+                                    <span class="badge type-badge">Directory Traversal</span>
+                                </div>
+                                <h3 class="vuln-title-compact">
+                                    2. Directory Traversal
+                                </h3>
+                            </div>
+                            
+                            <div class="vuln-body-compact">
+                                <!-- Meta Information -->
+                                <div class="vuln-meta-compact">
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">📍</span>
+                                        <span class="meta-text">test-code\YAL0029.TXT:780</span>
+                                    </div>
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">🔗</span>
+                                        <a href="https://cwe.mitre.org/data/definitions/22.html" 
+                                           target="_blank" class="meta-link">
                                             CWE-22
                                         </a>
-                                    </span>
+                                    </div>
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">🆔</span>
+                                        <span class="meta-text-small">abap-directory-traversal-001</span>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div class="vuln-description">
-                                <h4>📝 Description</h4>
-                                <p>File operation with unvalidated path may allow directory traversal</p>
-                            </div>
-                            
-                            <div class="vuln-code">
-                                <h4>💻 Code Context</h4>
-                                <pre class="code-block">  2 |          IF sy-subrc EQ 0.
+                                
+                                <!-- Description -->
+                                <div class="vuln-description-compact">
+                                    <h4>📝 Description</h4>
+                                    <p>File operation with unvalidated path may allow directory traversal</p>
+                                </div>
+                                
+                                <!-- Code Snippet -->
+                                <div class="vuln-code-compact">
+                                    <h4>💻 Vulnerable Code</h4>
+                                    <pre class="code-block-compact">  2 |          IF sy-subrc EQ 0.
   3 |    *       Si la compresion ha ido bien, se borra el fichero original
   4 | &gt;&gt;         DELETE DATASET ld_path.
   5 |          ENDIF.
   6 |        ENDIF.
   7 |      ENDIF.</pre>
+                                </div>
+                                
+                                <!-- Quick Advice (if no full plan) -->
                             </div>
-                            
-                            <div class="vuln-remediation">
-                                <h4>💡 Remediation Advice</h4>
-                                <div class="advice-content">
-    Prevent directory traversal:
-    - Validate file paths using FILE_VALIDATE_NAME
-    - Use absolute paths with proper validation
-    - Implement allowlist for accessible directories
-    - Check sy-subrc after FILE_VALIDATE_NAME call
-    
-    Example:
-    CALL FUNCTION &#39;FILE_VALIDATE_NAME&#39;
-      EXPORTING logical_filename = file_path
-      EXCEPTIONS OTHERS = 1.
-    IF sy-subrc = 0.
-      &#34; Safe to use file_path
-    ENDIF.
-    </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Remediation Plans -->
-            <section class="section">
-                <h2 class="section-title">🛠️ Remediation Plans</h2>
-                
-                <div class="remediation-summary">
-                    <p>2 actionable remediation plans generated, prioritized by risk and complexity.</p>
-                </div>
-                
-                <div class="remediation-plans">
-                    <div class="remediation-card">
-                        <div class="plan-header">
-                            <h3>🔧 Directory Traversal</h3>
-                            <span class="priority-badge priority-high">
-                                HIGH
-                            </span>
                         </div>
                         
-							<div class="plan-meta">
-								<span class="plan-stat">📊 Complexity: 8.25/10</span>
-								<span class="plan-stat">📋 2 steps</span>
-							</div>
-
-                        <div class="plan-steps">
-                            <h4>Implementation Steps:</h4>
-                            <ol>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Validate and Sanitize File Paths</strong>
-                                        <span class="step-meta">45min • medium</span>
+                        <!-- ─────────────────────────────────────────────── -->
+                        <!-- RIGHT: REMEDIATION PLAN -->
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="remediation-side">
+                                <div class="remediation-header-compact">
+                                    <div class="plan-priority-row">
+                                        <span class="priority-badge priority-high">
+                                            HIGH
+                                        </span>
+                                        <span class="complexity-badge">
+                                            Complexity: 7.700000000000001/10
+                                        </span>
                                     </div>
-                                    <div class="step-description">To prevent directory traversal attacks, it&#39;s crucial to validate and sanitize file paths before using them in file operations. This can be achieved by checking if the provided path is within the expected directory and ensuring it doesn&#39;t contain any malicious characters or sequences that could lead to accessing unauthorized files or directories. The principle here is to ensure that the application only accesses files and directories that are intended to be accessible, thereby preventing an attacker from manipulating the path to access sensitive data. This step involves implementing a function that checks the path for any traversal attempts (like ../) and ensures the path is absolute and within the allowed directory structure.</div>
-                                    <pre class="step-code">BEFORE:
+                                    <h3 class="plan-title-compact">
+                                        🛠️ Remediation Plan
+                                    </h3>
+                                </div>
+                                
+                                <div class="plan-body-compact">
+                                    <!-- Plan Stats -->
+                                    <div class="plan-stats-row">
+                                        <div class="stat-item">
+                                            <span class="stat-icon">📋</span>
+                                            <span class="stat-text">2 steps</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-icon">⏱️</span>
+                                            <span class="stat-text">
+                                                75 min
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Implementation Steps -->
+                                    <div class="plan-steps-compact">
+                                        <h4>Implementation Steps:</h4>
+                                        <ol class="steps-list-compact">
+                                            <li class="step-item-compact">
+                                                <div class="step-header-inline">
+                                                    <strong>Validate and Normalize File Paths</strong>
+                                                    <span class="step-meta-badge">
+                                                        45min • medium
+                                                    </span>
+                                                </div>
+                                                <p class="step-description-text">La vulnerabilidad de Directory Traversal se produce cuando un atacante puede manipular la ruta de un archivo para acceder a directorios o archivos fuera del directorio raíz del aplicativo. Esto pue...</p>
+                                                <details class="step-code-details">
+                                                    <summary class="code-toggle">💻 View Code Example</summary>
+                                                    <pre class="step-code-example">BEFORE:
 CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
 OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
 
 AFTER:
-DATA: lv_allowed_path TYPE string.
-lv_allowed_path =...</pre>
-                                </li>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Implement Directory Traversal Protection</strong>
-                                        <span class="step-meta">60min • hard</span>
-                                    </div>
-                                    <div class="step-description">This step involves protecting against directory traversal by ensuring that any file operation is restricted to a specific directory and its subdirectories. This can be achieved by prefixing the file path with a base directory that is known to be safe and then validating the resulting path to ensure it does not attempt to traverse outside this base directory. The security principle here is to restrict access to only those resources that are necessary for the application&#39;s functionality, thereby reducing the attack surface. Implementing this protection requires modifying the file operation code to include path validation and ensuring that all file paths used in the application are absolute and sanitized.</div>
-                                    <pre class="step-code">BEFORE:
-DELETE DATASET ld_path.
-
-AFTER:
-DATA: lv_base_path TYPE string.
-lv_base_path = &#39;/safe/base/directory/&#39;.
-IF ld_path CS lv_base_path.
-  DELETE DATASET ld_path.
-ENDIF.</pre>
-                                </li>
-                            </ol>
-                        </div>
-                        
-                        <div class="risk-warning">
-                            <h5>⚠️ Risk if not addressed:</h5>
-                            <p>CONCRETE IMPACT: An attacker could exploit directory traversal vulnerabilities to access sensitive files or directories, potentially leading to data breaches or system compromise. This could result in significant financial and reputational damage, as well as potential compliance violations.</p>
-                        </div>
-                    </div>
-                    <div class="remediation-card">
-                        <div class="plan-header">
-                            <h3>🔧 Directory Traversal</h3>
-                            <span class="priority-badge priority-high">
-                                HIGH
-                            </span>
-                        </div>
-                        
-							<div class="plan-meta">
-								<span class="plan-stat">📊 Complexity: 8.25/10</span>
-								<span class="plan-stat">📋 2 steps</span>
-							</div>
-
-                        <div class="plan-steps">
-                            <h4>Implementation Steps:</h4>
-                            <ol>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Validate and Sanitize File Paths</strong>
-                                        <span class="step-meta">45min • medium</span>
-                                    </div>
-                                    <div class="step-description">To prevent directory traversal attacks, it&#39;s crucial to validate and sanitize file paths before using them in file operations. This can be achieved by checking if the provided path is within the expected directory and ensuring it doesn&#39;t contain any malicious characters or sequences that could lead to accessing unauthorized files or directories. The principle here is to ensure that the application only accesses files and directories that are intended to be accessible, thereby preventing an attacker from manipulating the path to access sensitive data. This step involves implementing a function that checks the path for any traversal attempts (like ../) and ensures the path is absolute and within the allowed directory structure.</div>
-                                    <pre class="step-code">BEFORE:
-CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
+DATA: lv_normalized_path TYPE string.
+lv_normalized_path = cl_http_utility=&gt;if_http_utility~normalize_url( p_path &amp;&amp; &#39;/&#39; &amp;&amp; p_nfich ).
+IF lv_normalized_path CS &#39;/../&#39;.
+  MESSAGE &#39;Ruta de archivo no válida&#39; TYPE &#39;E&#39;.
+ELSE.
+  OPEN DATASET lv_normalized_path FOR OU...</pre>
+                                                </details>
+                                            </li>
+                                            <li class="step-item-compact">
+                                                <div class="step-header-inline">
+                                                    <strong>Implementar Comprobación de Ruta de Archivo</strong>
+                                                    <span class="step-meta-badge">
+                                                        30min • easy
+                                                    </span>
+                                                </div>
+                                                <p class="step-description-text">Además de normalizar las rutas de los archivos, es importante implementar una comprobación adicional para asegurarse de que la ruta del archivo se encuentra dentro del directorio raíz permitido. Es...</p>
+                                                <details class="step-code-details">
+                                                    <summary class="code-toggle">💻 View Code Example</summary>
+                                                    <pre class="step-code-example">BEFORE:
 OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
 
 AFTER:
-DATA: lv_allowed_path TYPE string.
-lv_allowed_path =...</pre>
-                                </li>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Implement Directory Traversal Protection</strong>
-                                        <span class="step-meta">60min • hard</span>
-                                    </div>
-                                    <div class="step-description">This step involves protecting against directory traversal by ensuring that any file operation is restricted to a specific directory and its subdirectories. This can be achieved by prefixing the file path with a base directory that is known to be safe and then validating the resulting path to ensure it does not attempt to traverse outside this base directory. The security principle here is to restrict access to only those resources that are necessary for the application&#39;s functionality, thereby reducing the attack surface. Implementing this protection requires modifying the file operation code to include path validation and ensuring that all file paths used in the application are absolute and sanitized.</div>
-                                    <pre class="step-code">BEFORE:
-DELETE DATASET ld_path.
-
-AFTER:
-DATA: lv_base_path TYPE string.
-lv_base_path = &#39;/safe/base/directory/&#39;.
-IF ld_path CS lv_base_path.
-  DELETE DATASET ld_path.
+DATA: lv_root_path TYPE string VALUE &#39;/path/to/root/directory/&#39;.
+IF lv_normalized_path CA lv_root_path.
+  OPEN DATASET lv_normalized_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
+ELSE.
+  MESSAGE &#39;Ruta de archivo no válida&#39; TYPE &#39;E&#39;.
 ENDIF.</pre>
-                                </li>
-                            </ol>
+                                                </details>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                    
+                                    <!-- Risk Warning -->
+                                    <div class="risk-warning-compact">
+                                        <h5>⚠️ Risk if not fixed:</h5>
+                                        <p>Si no se corrige esta vulnerabilidad, un atacante podría acceder a archivos o directorios sensibles fuera del directorio raíz del aplicativo, lo que podría llevar a una violación de la seguridad y posibles daños a la organización. Un ejemplo de esto es el CVE-2021-44228, donde una vulnerabilidad de Directory Traversal en el software de gestión de contenido permitió a los atacantes acceder a archivos sensibles en el servidor.</p>
+                                    </div>
+                                    
+                                    <!-- References -->
+                                    <div class="plan-references">
+                                        <h5>📚 References:</h5>
+                                        <ul class="references-list">
+                                            <li><a href="CVE-2021-44228" target="_blank">CVE-2021-44228</a></li>
+                                            <li><a href="OWASP Directory Traversal" target="_blank">OWASP Directory Traversal</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
                         </div>
                         
-                        <div class="risk-warning">
-                            <h5>⚠️ Risk if not addressed:</h5>
-                            <p>CONCRETE IMPACT: An attacker could exploit directory traversal vulnerabilities to access sensitive files or directories, potentially leading to data breaches or system compromise. This could result in significant financial and reputational damage, as well as potential compliance violations.</p>
-                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Technical Details -->
+
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- TECHNICAL DETAILS -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             <section class="section">
                 <details class="technical-details">
                     <summary class="details-toggle">🔍 Technical Analysis Details</summary>
@@ -1062,7 +1348,7 @@ ENDIF.</pre>
                             <div class="tech-item">
                                 <h4>📊 Analysis Statistics</h4>
                                 <ul>
-                                    <li>Processing time: 31.47s</li>
+                                    <li>Processing time: 40.06s</li>
                                     <li>File size: 3.67 KB</li>
                                     <li>Language: Auto-detected</li>
                                     <li>Chunking: Disabled</li>
@@ -1082,17 +1368,19 @@ ENDIF.</pre>
                         
                         <div class="analysis-summary">
                             <h4>📋 Analysis Summary</h4>
-                            <pre>Se han detectado dos vulnerabilidades de Directory Traversal en el código, ambas con una severidad alta. Es importante abordar estas vulnerabilidades para prevenir posibles ataques de directory traversal.</pre>
+                            <pre>Se han detectado dos vulnerabilidades de travesía de directorios en el código ABAP, ambas con una severidad alta. Es importante validar las rutas de los archivos para prevenir la travesía de directorios y proteger la integridad del sistema de archivos.</pre>
                         </div>
                     </div>
                 </details>
             </section>
         </main>
 
-        <!-- Footer -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- FOOTER -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
         <footer class="footer">
             <div class="footer-content">
-                <p>Generated by <strong>Security Analysis Platform v3.0</strong> on 2025-12-16 at 11:17:57</p>
+                <p>Generated by <strong>Security Analysis Platform v3.0</strong> on 2025-12-16 at 22:03:19</p>
                 <p>For questions about this report, contact your security team.</p>
             </div>
         </footer>
@@ -1129,8 +1417,8 @@ function initializeAnimations() {
         });
     }, observerOptions);
 
-    // Apply to vulnerability cards
-    document.querySelectorAll('.vulnerability-card, .remediation-card').forEach(function(el) {
+    // Apply to analysis pairs
+    document.querySelectorAll('.analysis-pair').forEach(function(el) {
         el.style.opacity = '0';
         el.style.transform = 'translateY(20px)';
         el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
@@ -1140,18 +1428,19 @@ function initializeAnimations() {
 
 function setupCopyFunctionality() {
     // Add copy buttons to vulnerability IDs and CWE links
-    document.querySelectorAll('.meta-value').forEach(function(element) {
+    document.querySelectorAll('.meta-text-small, .meta-link').forEach(function(element) {
         const text = element.textContent.trim();
         
         if (text.match(/^(VULN-|ABAP-|CWE-)/)) {
             element.style.cursor = 'pointer';
             element.title = 'Click to copy ' + text;
             
-            element.addEventListener('click', function() {
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
                 copyToClipboard(text);
                 showToast('✅ Copied: ' + text);
             });
-        }
+			        }
     });
 }
 
@@ -1197,14 +1486,14 @@ function setupKeyboardNavigation() {
 }
 
 function filterVulnerabilities(query) {
-    const cards = document.querySelectorAll('.vulnerability-card');
+    const cards = document.querySelectorAll('.analysis-pair');
     let visibleCount = 0;
     
     cards.forEach(function(card) {
         const text = card.textContent.toLowerCase();
         const isVisible = query === '' || text.includes(query);
         
-        card.style.display = isVisible ? 'block' : 'none';
+        card.style.display = isVisible ? 'grid' : 'none';
         if (isVisible) visibleCount++;
     });
     
@@ -1301,7 +1590,7 @@ function logReportStatistics() {
         totalVulnerabilities: 2,
         highPriority: 2,
         riskScore: 7.0,
-        processingTime: '31.47s',
+        processingTime: '40.06s',
         chunking: false,
         llmAnalysis: true,
         reportVersion: '3.0'
@@ -1313,7 +1602,7 @@ function logReportStatistics() {
     console.log('⚡ Performance Metrics:');
     console.log('  • DOM Ready:', performance.now().toFixed(2) + 'ms');
     console.log('  • Interactive elements:', document.querySelectorAll('[onclick], [data-action]').length);
-    console.log('  • Vulnerability cards:', document.querySelectorAll('.vulnerability-card').length);
+    console.log('  • Vulnerability cards:', document.querySelectorAll('.analysis-pair').length);
 }
 
 // CSS animations for toasts

@@ -1,4 +1,14 @@
 # shared/logger.py
+"""
+Logger Setup - Simplified
+=========================
+
+Responsibilities:
+- Configure logging system
+- Provide formatters (JSON, Colored)
+- Setup file rotation
+"""
+
 import logging
 import logging.handlers
 import sys
@@ -7,10 +17,16 @@ from datetime import datetime
 from typing import Optional
 import json
 
+
+# ════════════════════════════════════════════════════════════════════
+# FORMATTERS
+# ════════════════════════════════════════════════════════════════════
+
 class JSONFormatter(logging.Formatter):
-    """Formatter JSON optimizado para logs estructurados"""
+    """JSON formatter for structured logging"""
     
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
+        """Format record as JSON"""
         log_data = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "level": record.levelname,
@@ -21,42 +37,55 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno
         }
         
-        if hasattr(record, 'extra'):
-            log_data["extra"] = record.extra
-        
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
         
         return json.dumps(log_data, ensure_ascii=False)
 
+
 class ColoredFormatter(logging.Formatter):
-    """Formatter con colores para consola"""
+    """Colored formatter for console output"""
     
     COLORS = {
-        'DEBUG': '\033[36m',    # Cyan
-        'INFO': '\033[32m',     # Green
-        'WARNING': '\033[33m',  # Yellow
-        'ERROR': '\033[31m',    # Red
-        'CRITICAL': '\033[35m', # Magenta
-        'RESET': '\033[0m'      # Reset
+        'DEBUG': '\033[36m',     # Cyan
+        'INFO': '\033[32m',      # Green
+        'WARNING': '\033[33m',   # Yellow
+        'ERROR': '\033[31m',     # Red
+        'CRITICAL': '\033[35m',  # Magenta
+        'RESET': '\033[0m'       # Reset
     }
     
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
+        """Format record with colors"""
         color = self.COLORS.get(record.levelname, self.COLORS['RESET'])
         reset = self.COLORS['RESET']
         
+        timestamp = datetime.fromtimestamp(record.created).strftime('%H:%M:%S')
+        
         return (
-            f"{color}[{datetime.fromtimestamp(record.created).strftime('%H:%M:%S')}] "
-            f"{record.levelname:<8}{reset} - "
+            f"{color}[{timestamp}] {record.levelname:<8}{reset} - "
             f"{record.module}.{record.funcName}:{record.lineno} - "
             f"{record.getMessage()}"
         )
 
-def setup_logging(log_level: str = "INFO", 
-                 log_file: Optional[str] = None,
-                 structured: bool = False) -> None:
-    """Configurar logging optimizado y simplificado"""
+
+# ════════════════════════════════════════════════════════════════════
+# SETUP FUNCTION
+# ════════════════════════════════════════════════════════════════════
+
+def setup_logging(
+    log_level: str = "INFO",
+    log_file: Optional[str] = None,
+    structured: bool = False
+) -> None:
+    """
+    Setup logging system
     
+    Args:
+        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_file: Optional file path for file logging
+        structured: Use JSON formatter (for structured logging)
+    """
     level = getattr(logging, log_level.upper(), logging.INFO)
     
     # Clear existing handlers
@@ -82,15 +111,21 @@ def setup_logging(log_level: str = "INFO",
         log_path.parent.mkdir(parents=True, exist_ok=True)
         
         file_handler = logging.handlers.RotatingFileHandler(
-            log_file, maxBytes=10*1024*1024, backupCount=5, encoding='utf-8'
+            log_file,
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=5,
+            encoding='utf-8'
         )
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(JSONFormatter())
         root_logger.addHandler(file_handler)
     
     # Suppress noisy loggers
-    for noisy_logger in ['urllib3', 'requests', 'openai']:
+    for noisy_logger in ['urllib3', 'requests', 'openai', 'httpx']:
         logging.getLogger(noisy_logger).setLevel(logging.WARNING)
     
+    # Log initialization
     logger = logging.getLogger(__name__)
-    logger.info(f"Logging configured - Level: {log_level}")
+    logger.info(f"📝 Logging configured: {log_level}")
+    if log_file:
+        logger.info(f"   File logging: {log_file}")

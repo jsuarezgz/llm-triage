@@ -26,7 +26,6 @@ infrastructure/cache.py
 infrastructure/config.py
 infrastructure/llm/__init__.py
 infrastructure/llm/client.py
-infrastructure/llm/exceptions.py
 infrastructure/llm/prompts.py
 infrastructure/llm/response_parser.py
 llm_triage.egg-info/PKG-INFO
@@ -36,5 +35,8 @@ llm_triage.egg-info/entry_points.txt
 llm_triage.egg-info/requires.txt
 llm_triage.egg-info/top_level.txt
 shared/__init__.py
+shared/constants.py
+shared/formatters.py
 shared/logger.py
 shared/metrics.py
+shared/validators.py

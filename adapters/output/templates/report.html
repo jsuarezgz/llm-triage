@@ -1,15 +1,18 @@
- <!-- adapters/output/templates/report.html -->
+<!-- adapters/output/templates/report.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🛡️ {{ platform_name }} - Report</title>
+    <title>🛡️ {{ platform_name }} - Security Report</title>
     {% include 'styles.html' %}
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- HEADER -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
         <header class="header">
             <div class="header-content">
                 <h1>🛡️ Security Analysis Report</h1>
@@ -35,7 +38,10 @@
         </header>
 
         <main class="content">
-            <!-- Executive Summary -->
+            
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- EXECUTIVE SUMMARY -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             <section class="section">
                 <h2 class="section-title">📈 Executive Summary</h2>
                 
@@ -62,72 +68,180 @@
                 </div>
             </section>
 
-            <!-- Vulnerabilities -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- VULNERABILITIES + REMEDIATION GRID -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             {% if scan_result.vulnerabilities %}
             <section class="section">
-                <h2 class="section-title">🚨 Security Vulnerabilities</h2>
+                <h2 class="section-title">🔐 Security Analysis & Remediation</h2>
                 
-                <div class="vulnerabilities-list">
+                <div class="vuln-remediation-grid">
                     {% for vuln in scan_result.vulnerabilities %}
-                    <div class="vulnerability-card {{ vuln.severity.value | severity_class }}">
-                        <div class="vuln-header">
-                            <h3 class="vuln-title">
-                                {{ vuln.severity | severity_icon }} {{ loop.index }}. {{ vuln.title }}
-                            </h3>
-                            <div class="vuln-badges">
-                                <span class="badge severity-{{ vuln.severity.value | severity_class }}">
-                                    {{ vuln.severity.value }}
-                                </span>
-                                <span class="badge type-badge">{{ vuln.type.value }}</span>
-                            </div>
-                        </div>
+                    <div class="analysis-pair {{ vuln.severity.value | severity_class }}-border">
                         
-                        <div class="vuln-body">
-                            <div class="vuln-meta">
-                                <div class="meta-item">
-                                    <span class="meta-label">📍 Location</span>
-                                    <span class="meta-value">{{ vuln.file_path }}:{{ vuln.line_number }}</span>
+                        <!-- ─────────────────────────────────────────────── -->
+                        <!-- LEFT: VULNERABILITY CARD -->
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="vulnerability-side">
+                            <div class="vuln-header-compact">
+                                <div class="vuln-badge-row">
+                                    <span class="badge severity-{{ vuln.severity.value | severity_class }}">
+                                        {{ vuln.severity | severity_icon }} {{ vuln.severity.value }}
+                                    </span>
+                                    <span class="badge type-badge">{{ vuln.type.value }}</span>
                                 </div>
-                                <div class="meta-item">
-                                    <span class="meta-label">🆔 ID</span>
-                                    <span class="meta-value">{{ vuln.id }}</span>
-                                </div>
-                                {% if vuln.cwe_id %}
-                                <div class="meta-item">
-                                    <span class="meta-label">🔗 CWE</span>
-                                    <span class="meta-value">
-                                        <a href="https://cwe.mitre.org/data/definitions/{{ vuln.cwe_id.replace('CWE-', '') }}.html" target="_blank">
+                                <h3 class="vuln-title-compact">
+                                    {{ loop.index }}. {{ vuln.title }}
+                                </h3>
+                            </div>
+                            
+                            <div class="vuln-body-compact">
+                                <!-- Meta Information -->
+                                <div class="vuln-meta-compact">
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">📍</span>
+                                        <span class="meta-text">{{ vuln.file_path }}:{{ vuln.line_number }}</span>
+                                    </div>
+                                    {% if vuln.cwe_id %}
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">🔗</span>
+                                        <a href="https://cwe.mitre.org/data/definitions/{{ vuln.cwe_id.replace('CWE-', '') }}.html" 
+                                           target="_blank" class="meta-link">
                                             {{ vuln.cwe_id }}
                                         </a>
-                                    </span>
+                                    </div>
+                                    {% endif %}
+                                    <div class="meta-item-inline">
+                                        <span class="meta-icon">🆔</span>
+                                        <span class="meta-text-small">{{ vuln.id }}</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Description -->
+                                <div class="vuln-description-compact">
+                                    <h4>📝 Description</h4>
+                                    <p>{{ vuln.description }}</p>
+                                </div>
+                                
+                                <!-- Code Snippet -->
+                                {% if vuln.code_snippet %}
+                                <div class="vuln-code-compact">
+                                    <h4>💻 Vulnerable Code</h4>
+                                    <pre class="code-block-compact">{{ vuln.code_snippet | truncate_smart(300) }}</pre>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Quick Advice (if no full plan) -->
+                                {% if vuln.remediation_advice and not remediation_plans %}
+                                <div class="vuln-advice-compact">
+                                    <h4>💡 Quick Fix</h4>
+                                    <div class="advice-content-compact">{{ vuln.remediation_advice }}</div>
                                 </div>
                                 {% endif %}
                             </div>
-                            
-                            <div class="vuln-description">
-                                <h4>📝 Description</h4>
-                                <p>{{ vuln.description }}</p>
-                            </div>
-                            
-                            {% if vuln.code_snippet %}
-                            <div class="vuln-code">
-                                <h4>💻 Code Context</h4>
-                                <pre class="code-block">{{ vuln.code_snippet | truncate_smart(500) }}</pre>
-                            </div>
-                            {% endif %}
-                            
-                            {% if vuln.remediation_advice %}
-                            <div class="vuln-remediation">
-                                <h4>💡 Remediation Advice</h4>
-                                <div class="advice-content">{{ vuln.remediation_advice }}</div>
-                            </div>
+                        </div>
+                        
+                        <!-- ─────────────────────────────────────────────── -->
+                        <!-- RIGHT: REMEDIATION PLAN -->
+                        <!-- ─────────────────────────────────────────────── -->
+                        <div class="remediation-side">
+                            {% set plan = remediation_plans | selectattr('vulnerability_id', 'equalto', vuln.id) | first %}
+                            {% if plan %}
+                                <div class="remediation-header-compact">
+                                    <div class="plan-priority-row">
+                                        <span class="priority-badge priority-{{ plan.priority_level }}">
+                                            {{ plan.priority_level.upper() }}
+                                        </span>
+                                        <span class="complexity-badge">
+                                            Complexity: {{ plan.complexity_score }}/10
+                                        </span>
+                                    </div>
+                                    <h3 class="plan-title-compact">
+                                        🛠️ Remediation Plan
+                                    </h3>
+                                </div>
+                                
+                                <div class="plan-body-compact">
+                                    <!-- Plan Stats -->
+                                    <div class="plan-stats-row">
+                                        <div class="stat-item">
+                                            <span class="stat-icon">📋</span>
+                                            <span class="stat-text">{{ plan.steps | length }} steps</span>
+                                        </div>
+                                        <div class="stat-item">
+                                            <span class="stat-icon">⏱️</span>
+                                            <span class="stat-text">
+                                                {% set total_minutes = plan.steps | sum(attribute='estimated_minutes') %}
+                                                {{ total_minutes }} min
+                                            </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Implementation Steps -->
+                                    <div class="plan-steps-compact">
+                                        <h4>Implementation Steps:</h4>
+                                        <ol class="steps-list-compact">
+                                            {% for step in plan.steps %}
+                                            <li class="step-item-compact">
+                                                <div class="step-header-inline">
+                                                    <strong>{{ step.title }}</strong>
+                                                    <span class="step-meta-badge">
+                                                        {{ step.estimated_minutes }}min • {{ step.difficulty }}
+                                                    </span>
+                                                </div>
+                                                <p class="step-description-text">{{ step.description | truncate_smart(200) }}</p>
+                                                {% if step.code_example %}
+                                                <details class="step-code-details">
+                                                    <summary class="code-toggle">💻 View Code Example</summary>
+                                                    <pre class="step-code-example">{{ step.code_example | truncate_smart(400) }}</pre>
+                                                </details>
+                                                {% endif %}
+                                            </li>
+                                            {% endfor %}
+                                        </ol>
+                                    </div>
+                                    
+                                    <!-- Risk Warning -->
+                                    {% if plan.risk_if_not_fixed %}
+                                    <div class="risk-warning-compact">
+                                        <h5>⚠️ Risk if not fixed:</h5>
+                                        <p>{{ plan.risk_if_not_fixed }}</p>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- References -->
+                                    {% if plan.references %}
+                                    <div class="plan-references">
+                                        <h5>📚 References:</h5>
+                                        <ul class="references-list">
+                                            {% for ref in plan.references %}
+                                            <li><a href="{{ ref }}" target="_blank">{{ ref | truncate_smart(60) }}</a></li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <!-- No Remediation Plan Available -->
+                                <div class="no-plan-card">
+                                    <div class="no-plan-icon">📋</div>
+                                    <h3>No Remediation Plan</h3>
+                                    <p>Automatic remediation plan not available for this vulnerability.</p>
+                                    <div class="manual-review-box">
+                                        <strong>⚠️ Manual Review Required</strong>
+                                        <p>Please review the vulnerability description and implement appropriate security fixes.</p>
+                                    </div>
+                                </div>
                             {% endif %}
                         </div>
+                        
                     </div>
                     {% endfor %}
                 </div>
             </section>
+
             {% else %}
+            <!-- No Vulnerabilities Found -->
             <section class="section">
                 <div class="no-vulnerabilities">
                     <div class="no-vulns-icon">✅</div>
@@ -137,61 +251,9 @@
             </section>
             {% endif %}
 
-            <!-- Remediation Plans -->
-            {% if remediation_plans %}
-            <section class="section">
-                <h2 class="section-title">🛠️ Remediation Plans</h2>
-                
-                <div class="remediation-summary">
-                    <p>{{ remediation_plans | length }} actionable remediation plans generated, prioritized by risk and complexity.</p>
-                </div>
-                
-                <div class="remediation-plans">
-                    {% for plan in remediation_plans %}
-                    <div class="remediation-card">
-                        <div class="plan-header">
-                            <h3>🔧 {{ plan.vulnerability_type.value }}</h3>
-                            <span class="priority-badge priority-{{ plan.priority_level }}">
-                                {{ plan.priority_level.upper() }}
-                            </span>
-                        </div>
-                        
-							<div class="plan-meta">
-								<span class="plan-stat">📊 Complexity: {{ plan.complexity_score }}/10</span>
-								<span class="plan-stat">📋 {{ plan.steps | length }} steps</span>
-							</div>
-
-                        <div class="plan-steps">
-                            <h4>Implementation Steps:</h4>
-                            <ol>
-                                {% for step in plan.steps %}
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>{{ step.title }}</strong>
-                                        <span class="step-meta">{{ step.estimated_minutes }}min • {{ step.difficulty }}</span>
-                                    </div>
-                                    <div class="step-description">{{ step.description }}</div>
-                                    {% if step.code_example %}
-                                    <pre class="step-code">{{ step.code_example | truncate_smart(200) }}</pre>
-                                    {% endif %}
-                                </li>
-                                {% endfor %}
-                            </ol>
-                        </div>
-                        
-                        {% if plan.risk_if_not_fixed %}
-                        <div class="risk-warning">
-                            <h5>⚠️ Risk if not addressed:</h5>
-                            <p>{{ plan.risk_if_not_fixed }}</p>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-            </section>
-            {% endif %}
-
-            <!-- Technical Details -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- TECHNICAL DETAILS -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             <section class="section">
                 <details class="technical-details">
                     <summary class="details-toggle">🔍 Technical Analysis Details</summary>
@@ -231,7 +293,9 @@
             </section>
         </main>
 
-        <!-- Footer -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- FOOTER -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
         <footer class="footer">
             <div class="footer-content">
                 <p>Generated by <strong>{{ platform_name }}</strong> on {{ generation_timestamp.strftime('%Y-%m-%d at %H:%M:%S') }}</p>

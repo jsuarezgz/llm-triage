@@ -1,76 +1,114 @@
 # core/services/remediation.py
+"""
+Remediation Service - Simplified
+================================
+
+Responsibilities:
+- Generate remediation plans
+- Prioritize plans
+- Customize steps per vulnerability
+"""
+
 import logging
 import asyncio
 from typing import List, Optional, Dict
 from collections import defaultdict
 
-from ..models import Vulnerability, RemediationPlan, RemediationStep, VulnerabilityType
+from ..models import (
+    Vulnerability, RemediationPlan, RemediationStep, VulnerabilityType
+)
 from ..exceptions import LLMError
 from infrastructure.llm.client import LLMClient
 from shared.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
+
 class RemediationService:
-    """Servicio de remediación optimizado sin duplicación"""
+    """Simplified remediation service"""
     
-    def __init__(self, llm_client: LLMClient, metrics: Optional[MetricsCollector] = None):
+    def __init__(
+        self,
+        llm_client: LLMClient,
+        metrics: Optional[MetricsCollector] = None
+    ):
         self.llm_client = llm_client
         self.metrics = metrics
     
-    async def generate_remediation_plans(self, 
-                                       confirmed_vulnerabilities: List[Vulnerability],
-                                       language: Optional[str] = None) -> List[RemediationPlan]:
-        """Generate remediation plans for confirmed vulnerabilities"""
+    async def generate_remediation_plans(
+        self,
+        vulnerabilities: List[Vulnerability],
+        language: Optional[str] = None
+    ) -> List[RemediationPlan]:
+        """
+        Generate remediation plans for confirmed vulnerabilities
         
-        if not confirmed_vulnerabilities:
-            logger.info("No confirmed vulnerabilities - no plans needed")
+        Args:
+            vulnerabilities: List of confirmed vulnerabilities
+            language: Programming language
+        
+        Returns:
+            List of prioritized remediation plans
+        """
+        if not vulnerabilities:
+            logger.info("No vulnerabilities - no plans needed")
             return []
         
-        logger.info(f"Generating remediation plans for {len(confirmed_vulnerabilities)} vulnerabilities")
+        logger.info(f"🛠️  Generating plans for {len(vulnerabilities)} vulnerabilities")
         
         # Group by type for efficient batch processing
-        grouped_vulns = self._group_by_type(confirmed_vulnerabilities)
+        grouped = self._group_by_type(vulnerabilities)
         
         all_plans = []
-        for vuln_type, vulns in grouped_vulns.items():
+        for vuln_type, vulns in grouped.items():
             try:
-                plans = await self._generate_plans_for_type(vuln_type, vulns, language)
+                plans = await self._generate_for_type(vuln_type, vulns, language)
                 all_plans.extend(plans)
             except Exception as e:
                 logger.error(f"Failed to generate plans for {vuln_type}: {e}")
                 # Add fallback plans
-                fallback_plans = self._create_fallback_plans(vulns)
-                all_plans.extend(fallback_plans)
+                fallback = self._create_fallback_plans(vulns)
+                all_plans.extend(fallback)
         
-        # Sort by priority
-        prioritized_plans = self._prioritize_plans(all_plans)
+        # Prioritize
+        prioritized = self._prioritize_plans(all_plans)
         
-        logger.info(f"Generated {len(prioritized_plans)} remediation plans")
-        return prioritized_plans
+        logger.info(f"✅ Generated {len(prioritized)} remediation plans")
+        return prioritized
     
-    def _group_by_type(self, vulnerabilities: List[Vulnerability]) -> Dict[VulnerabilityType, List[Vulnerability]]:
-        """Group vulnerabilities by type for batch processing"""
+    # ════════════════════════════════════════════════════════════════
+    # PRIVATE HELPERS
+    # ════════════════════════════════════════════════════════════════
+    
+    def _group_by_type(
+        self,
+        vulnerabilities: List[Vulnerability]
+    ) -> Dict[VulnerabilityType, List[Vulnerability]]:
+        """Group vulnerabilities by type"""
         groups = defaultdict(list)
         for vuln in vulnerabilities:
             groups[vuln.type].append(vuln)
         return dict(groups)
     
-    async def _generate_plans_for_type(self, vuln_type: VulnerabilityType, 
-                                     vulnerabilities: List[Vulnerability],
-                                     language: Optional[str]) -> List[RemediationPlan]:
+    async def _generate_for_type(
+        self,
+        vuln_type: VulnerabilityType,
+        vulnerabilities: List[Vulnerability],
+        language: Optional[str]
+    ) -> List[RemediationPlan]:
         """Generate plans for specific vulnerability type"""
-        
         start_time = asyncio.get_event_loop().time()
         
         try:
-            # Prepare remediation request
-            request = self._prepare_remediation_request(vuln_type, vulnerabilities, language)
+            # Prepare request
+            request = self._prepare_request(vuln_type, vulnerabilities, language)
             
             # Get LLM response
-            response = await self.llm_client.generate_remediation_plan(request)
+            response = await self.llm_client.generate_remediation_plan(
+                request, vuln_type.value, language
+            )
             
-            # Create individual plans from response
+            # Create individual plans from template
             plans = self._create_individual_plans(response, vulnerabilities)
             
             # Record metrics
@@ -81,7 +119,7 @@ class RemediationService:
                 )
             
             return plans
-        
+            
         except Exception as e:
             if self.metrics:
                 generation_time = asyncio.get_event_loop().time() - start_time
@@ -90,13 +128,15 @@ class RemediationService:
                 )
             raise
     
-    def _prepare_remediation_request(self, vuln_type: VulnerabilityType, 
-                                   vulnerabilities: List[Vulnerability],
-                                   language: Optional[str]) -> str:
+    def _prepare_request(
+        self,
+        vuln_type: VulnerabilityType,
+        vulnerabilities: List[Vulnerability],
+        language: Optional[str]
+    ) -> str:
         """Prepare structured remediation request"""
-        
         header = f"# REMEDIATION PLAN REQUEST\n"
-        header += f"Vulnerability Type: {vuln_type.value}\n"
+        header += f"Type: {vuln_type.value}\n"
         header += f"Language: {language or 'Unknown'}\n"
         header += f"Count: {len(vulnerabilities)}\n\n"
         
@@ -109,87 +149,95 @@ class RemediationService:
 - Description: {vuln.description}"""
             
             if vuln.code_snippet:
-                detail += f"\n- Code Context:\n{vuln.code_snippet[:500]}"
+                detail += f"\n- Code:\n{vuln.code_snippet[:500]}"
             
             vuln_details.append(detail)
         
         return header + "\n\n".join(vuln_details)
     
-    def _create_individual_plans(self, template_plan: RemediationPlan, 
-                               vulnerabilities: List[Vulnerability]) -> List[RemediationPlan]:
+    def _create_individual_plans(
+        self,
+        template_plan: RemediationPlan,
+        vulnerabilities: List[Vulnerability]
+    ) -> List[RemediationPlan]:
         """Create individual plans from template"""
+        plans = []
         
-        individual_plans = []
         for vuln in vulnerabilities:
-            # Customize plan for specific vulnerability
-            customized_plan = RemediationPlan(
+            customized = RemediationPlan(
                 vulnerability_id=vuln.id,
                 vulnerability_type=vuln.type,
                 priority_level=self._calculate_priority(vuln),
                 steps=self._customize_steps(template_plan.steps, vuln),
                 risk_if_not_fixed=template_plan.risk_if_not_fixed,
                 references=template_plan.references,
-                complexity_score=self._adjust_complexity(template_plan.complexity_score, vuln),
+                complexity_score=self._adjust_complexity(
+                    template_plan.complexity_score, vuln
+                ),
                 llm_model_used=template_plan.llm_model_used
             )
-            individual_plans.append(customized_plan)
+            plans.append(customized)
         
-        return individual_plans
-
+        return plans
     
-    def _calculate_priority(self, vulnerability: Vulnerability) -> str:
-        """Calculate priority level based on vulnerability characteristics"""
+    def _calculate_priority(self, vuln: Vulnerability) -> str:
+        """Calculate priority level"""
         priority_map = {
             "CRÍTICA": "immediate",
-            "ALTA": "high", 
+            "ALTA": "high",
             "MEDIA": "medium",
             "BAJA": "low",
             "INFO": "low"
         }
-        return priority_map.get(vulnerability.severity.value, "medium")
+        return priority_map.get(vuln.severity.value, "medium")
     
-    def _customize_steps(self, template_steps: List[RemediationStep], 
-                        vulnerability: Vulnerability) -> List[RemediationStep]:
-        """Customize remediation steps for specific vulnerability"""
+    def _customize_steps(
+        self,
+        template_steps: List[RemediationStep],
+        vulnerability: Vulnerability
+    ) -> List[RemediationStep]:
+        """Customize steps for specific vulnerability"""
+        customized = []
         
-        customized_steps = []
         for step in template_steps:
             try:
-                # Intentar formatear con placeholders
+                # Try to format with placeholders
                 formatted_title = step.title.format(
                     file=vulnerability.file_path,
                     line=vulnerability.line_number,
                     vuln_type=vulnerability.type.value
                 )
-                formatted_description = step.description.format(
+                formatted_desc = step.description.format(
                     vulnerability_id=vulnerability.id,
                     file_path=vulnerability.file_path,
                     severity=vulnerability.severity.value
                 )
-            except KeyError as e:
-                # Si no hay placeholders, usar texto original
-                logger.debug(f"No format placeholders in step {step.step_number}: {e}")
+            except KeyError:
+                # No placeholders, use original
                 formatted_title = step.title
-                formatted_description = step.description
+                formatted_desc = step.description
             
             customized_step = RemediationStep(
                 step_number=step.step_number,
                 title=formatted_title,
-                description=formatted_description,
+                description=formatted_desc,
                 code_example=step.code_example,
                 estimated_minutes=step.estimated_minutes,
                 difficulty=step.difficulty,
                 tools_required=step.tools_required
             )
-            customized_steps.append(customized_step)
+            customized.append(customized_step)
         
-        return customized_steps
+        return customized
     
-    def _adjust_complexity(self, base_complexity: float, vulnerability: Vulnerability) -> float:
-        """Adjust complexity based on vulnerability characteristics"""
-        
-        # Adjust based on severity
-        severity_multipliers = {
+    def _adjust_complexity(
+        self,
+        base_complexity: float,
+        vulnerability: Vulnerability
+    ) -> float:
+        """Adjust complexity based on vulnerability"""
+        # Severity multipliers
+        multipliers = {
             "CRÍTICA": 1.2,
             "ALTA": 1.1,
             "MEDIA": 1.0,
@@ -197,29 +245,33 @@ class RemediationService:
             "INFO": 0.8
         }
         
-        multiplier = severity_multipliers.get(vulnerability.severity.value, 1.0)
+        multiplier = multipliers.get(vulnerability.severity.value, 1.0)
         adjusted = base_complexity * multiplier
         
-        return min(max(adjusted, 1.0), 10.0)  # Clamp to 1-10 range
+        # Clamp to 1-10 range
+        return min(max(adjusted, 1.0), 10.0)
     
-    def _create_fallback_plans(self, vulnerabilities: List[Vulnerability]) -> List[RemediationPlan]:
+    def _create_fallback_plans(
+        self,
+        vulnerabilities: List[Vulnerability]
+    ) -> List[RemediationPlan]:
         """Create basic fallback plans when LLM fails"""
-        
-        logger.warning("Creating fallback remediation plans")
+        logger.warning("⚠️  Creating fallback remediation plans")
         
         fallback_plans = []
+        
         for vuln in vulnerabilities:
             basic_steps = [
                 RemediationStep(
                     step_number=1,
                     title="Manual Security Review",
-                    description=f"Manually review {vuln.type.value} vulnerability in {vuln.file_path}",
+                    description=f"Review {vuln.type.value} in {vuln.file_path}",
                     estimated_minutes=30,
                     difficulty="medium"
                 ),
                 RemediationStep(
                     step_number=2,
-                    title="Research Best Practices", 
+                    title="Research Best Practices",
                     description=f"Research security best practices for {vuln.type.value}",
                     estimated_minutes=15,
                     difficulty="easy"
@@ -227,14 +279,14 @@ class RemediationService:
                 RemediationStep(
                     step_number=3,
                     title="Implement Fix",
-                    description="Apply appropriate security fix based on research",
+                    description="Apply appropriate security fix",
                     estimated_minutes=120,
                     difficulty="hard"
                 ),
                 RemediationStep(
                     step_number=4,
                     title="Validate Fix",
-                    description="Test that vulnerability has been properly addressed",
+                    description="Test that vulnerability is fixed",
                     estimated_minutes=30,
                     difficulty="medium"
                 )
@@ -245,7 +297,7 @@ class RemediationService:
                 vulnerability_type=vuln.type,
                 priority_level=self._calculate_priority(vuln),
                 steps=basic_steps,
-                risk_if_not_fixed=f"Security risk associated with {vuln.type.value}",
+                risk_if_not_fixed=f"Security risk: {vuln.type.value}",
                 complexity_score=5.0,
                 llm_model_used="fallback"
             )
@@ -254,12 +306,23 @@ class RemediationService:
         
         return fallback_plans
     
-    def _prioritize_plans(self, plans: List[RemediationPlan]) -> List[RemediationPlan]:
+    def _prioritize_plans(
+        self,
+        plans: List[RemediationPlan]
+    ) -> List[RemediationPlan]:
         """Sort plans by priority and complexity"""
+        priority_weights = {
+            "immediate": 4,
+            "high": 3,
+            "medium": 2,
+            "low": 1
+        }
         
-        priority_weights = {"immediate": 4, "high": 3, "medium": 2, "low": 1}
-        
-        return sorted(plans, key=lambda p: (
-            priority_weights.get(p.priority_level, 0),
-            -p.complexity_score  # Lower complexity = higher priority
-        ), reverse=True)
+        return sorted(
+            plans,
+            key=lambda p: (
+                priority_weights.get(p.priority_level, 0),
+                -p.complexity_score  # Lower complexity = higher priority
+            ),
+            reverse=True
+        )

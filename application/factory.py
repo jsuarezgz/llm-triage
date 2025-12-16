@@ -1,4 +1,14 @@
-# application/factory.py - ACTUALIZADO CON CONTROL DE DEBUG
+# application/factory.py
+"""
+Service Factory - Clean & Simple
+================================
+
+Responsibilities:
+- Create and configure services
+- Handle provider overrides from CLI
+- Manage shared dependencies (cache, metrics)
+"""
+
 import logging
 from typing import Optional
 
@@ -15,75 +25,116 @@ from shared.logger import setup_logging
 
 logger = logging.getLogger(__name__)
 
+
 class ServiceFactory:
-    """Factory optimizado con control de debug automático"""
+    """Simplified service factory with clean dependencies"""
     
-    def __init__(self, enable_cache: bool = True, log_level: str = "INFO"):
+    def __init__(
+        self,
+        enable_cache: bool = True,
+        log_level: str = "INFO",
+        llm_provider_override: Optional[str] = None,
+        llm_model_override: Optional[str] = None
+    ):
         # Setup logging
         setup_logging(log_level)
         
-        # Initialize shared components
+        # Store settings reference
         self.settings = settings
+        
+        # Overrides from CLI
+        self.llm_provider_override = llm_provider_override
+        self.llm_model_override = llm_model_override
+        
+        # Shared components
         self.metrics = MetricsCollector() if settings.metrics_enabled else None
-        self.cache = AnalysisCache(settings.cache_directory, settings.cache_ttl_hours) if enable_cache else None
+        self.cache = self._create_cache() if enable_cache else None
         
-        # Control de debug
+        # Deduplication config (set by CLI)
+        self.enable_dedup = True
+        self.dedup_strategy = 'moderate'
+        
+        # Debug mode
         self.debug_mode = False
         
-        # Validate configuration
-        self._validate_configuration()
+        # Validate and log
+        self._log_initialization()
+    
+    def _create_cache(self) -> Optional[AnalysisCache]:
+        """Create cache instance"""
+        try:
+            return AnalysisCache(
+                cache_dir=settings.cache_directory,
+                ttl_hours=settings.cache_ttl_hours
+            )
+        except Exception as e:
+            logger.warning(f"Cache creation failed: {e}")
+            return None
+    
+    def _log_initialization(self):
+        """Log factory initialization"""
+        provider = self._get_effective_provider()
+        logger.info(f"🏭 Factory initialized: {provider}")
         
-        logger.info(f"ServiceFactory initialized with {settings.get_available_llm_provider()}")
+        if self.llm_provider_override:
+            logger.info(f"   Provider override: {self.llm_provider_override}")
+        
+        if self.llm_model_override:
+            logger.info(f"   Model override: {self.llm_model_override}")
     
-    def enable_debug_mode(self):
-        """Habilitar modo debug - será llamado desde el debugger"""
-        self.debug_mode = True
-        logger.info("🔍 Debug mode enabled in ServiceFactory")
+    def _get_effective_provider(self) -> str:
+        """Get effective LLM provider"""
+        if self.llm_provider_override:
+            return self.llm_provider_override
+        
+        if settings.has_llm_provider:
+            return settings.get_available_llm_provider()
+        
+        return "none"
     
-    def disable_debug_mode(self):
-        """Deshabilitar modo debug"""
-        self.debug_mode = False
-        logger.info("🔍 Debug mode disabled in ServiceFactory")
-    
-    def _validate_configuration(self) -> None:
-        """Validate system configuration"""
-        if not self.settings.has_llm_provider:
-            logger.warning("No LLM providers configured - system will run in basic mode")
-        else:
-            logger.info(f"LLM provider available: {self.settings.get_available_llm_provider()}")
+    # ════════════════════════════════════════════════════════════════
+    # SERVICE CREATION
+    # ════════════════════════════════════════════════════════════════
     
     def create_scanner_service(self) -> ScannerService:
+        """Create scanner service"""
         return ScannerService(
             cache=self.cache,
-            enable_deduplication=getattr(self, 'enable_dedup', True),
-            dedup_strategy=getattr(self, 'dedup_strategy', 'moderate')
+            enable_deduplication=self.enable_dedup,
+            dedup_strategy=self.dedup_strategy
         )
     
     def create_llm_client(self) -> Optional[LLMClient]:
-        """Create LLM client with debug control"""
-        if not self.settings.has_llm_provider:
-            return None
+        """Create LLM client with overrides"""
+        # Determine provider
+        if self.llm_provider_override:
+            provider = self.llm_provider_override
+        else:
+            if not settings.has_llm_provider:
+                return None
+            provider = settings.get_available_llm_provider()
         
         try:
-            provider = self.settings.get_available_llm_provider()
-            # Pasar el estado de debug al cliente
-            client = LLMClient(primary_provider=provider, enable_debug=self.debug_mode)
+            # Create client
+            client = LLMClient(
+                llm_provider=provider,
+                enable_debug=self.debug_mode
+            )
             
-            # Si el debug está habilitado, registrar el cliente automáticamente
-            if self.debug_mode:
-                try:
-                    from debug.llm_debugger import register_llm_client_for_debug
-                    register_llm_client_for_debug(client)
-                except ImportError:
-                    logger.warning("Debug module not available")
+            # Override model if specified
+            if self.llm_model_override:
+                logger.info(f"🔄 Model override: {self.llm_model_override}")
+                client.model_name = self.llm_model_override
+                client.model[provider] = self.llm_model_override
             
             return client
+            
         except Exception as e:
             logger.error(f"Failed to create LLM client: {e}")
             return None
-   
+    
     def create_triage_service(self) -> Optional[TriageService]:
-        """Create triage service with LLM client"""
+        """Create triage service"""
         llm_client = self.create_llm_client()
         if not llm_client:
             return None
@@ -91,7 +142,7 @@ class ServiceFactory:
         return TriageService(llm_client=llm_client, metrics=self.metrics)
     
     def create_remediation_service(self) -> Optional[RemediationService]:
-        """Create remediation service with LLM client"""
+        """Create remediation service"""
         llm_client = self.create_llm_client()
         if not llm_client:
             return None
@@ -103,24 +154,58 @@ class ServiceFactory:
         return ReporterService(metrics=self.metrics)
     
     def create_chunker(self) -> OptimizedChunker:
-        """Create optimized chunker"""
-        return OptimizedChunker(self.settings.chunking_config)
+        """Create chunker"""
+        return OptimizedChunker(settings.chunking_config)
     
     def get_metrics(self) -> Optional[MetricsCollector]:
         """Get metrics collector"""
         return self.metrics
+    
+    # ════════════════════════════════════════════════════════════════
+    # DEBUG MODE
+    # ════════════════════════════════════════════════════════════════
+    
+    def enable_debug_mode(self):
+        """Enable debug mode"""
+        self.debug_mode = True
+        logger.info("🔍 Debug mode enabled")
+    
+    def disable_debug_mode(self):
+        """Disable debug mode"""
+        self.debug_mode = False
+        logger.info("🔍 Debug mode disabled")
 
-# Convenience function
-def create_factory() -> ServiceFactory:
-    """Create factory with default configuration"""
+
+# ════════════════════════════════════════════════════════════════════
+# FACTORY FUNCTIONS
+# ════════════════════════════════════════════════════════════════════
+
+def create_factory(
+    llm_provider_override: Optional[str] = None,
+    llm_model_override: Optional[str] = None
+) -> ServiceFactory:
+    """
+    Create factory with optional CLI overrides
+    
+    Args:
+        llm_provider_override: Override provider (openai|watsonx)
+        llm_model_override: Override model name
+    
+    Returns:
+        Configured ServiceFactory
+    """
     return ServiceFactory(
         enable_cache=settings.cache_enabled,
-        log_level=settings.log_level
+        log_level=settings.log_level,
+        llm_provider_override=llm_provider_override,
+        llm_model_override=llm_model_override
     )
 
-# Factory con debug habilitado - para uso desde debugger
-def create_debug_factory() -> ServiceFactory:
+
+def create_debug_factory(
+    llm_provider_override: Optional[str] = None
+) -> ServiceFactory:
     """Create factory with debug enabled"""
-    factory = create_factory()
+    factory = create_factory(llm_provider_override=llm_provider_override)
     factory.enable_debug_mode()
     return factory

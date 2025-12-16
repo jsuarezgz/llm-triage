@@ -1,6 +1,9 @@
 <!-- adapters/output/templates/styles.html -->
 <style>
-/* === RESET & BASE === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESET & BASE STYLES */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 * {
     margin: 0;
     padding: 0;
@@ -15,9 +18,12 @@ body {
     min-height: 100vh;
 }
 
-/* === LAYOUT === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* LAYOUT */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 20px auto;
     background: white;
     border-radius: 16px;
@@ -25,7 +31,10 @@ body {
     overflow: hidden;
 }
 
-/* === HEADER === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* HEADER */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .header {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
     color: white;
@@ -83,7 +92,10 @@ body {
     font-weight: 600;
 }
 
-/* === CONTENT === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* CONTENT & SECTIONS */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .content {
     padding: 2rem;
 }
@@ -112,7 +124,10 @@ body {
     background: linear-gradient(90deg, #4f46e5, #7c3aed);
 }
 
-/* === METRICS === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* METRICS (Executive Summary) */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .metrics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -168,67 +183,69 @@ body {
     letter-spacing: 0.05em;
 }
 
-/* === VULNERABILITIES === */
-.vulnerabilities-list {
+.summary-info {
+    background: #f0f9ff;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid #0ea5e9;
+}
+
+.summary-info p {
+    margin-bottom: 0.5rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* GRID LAYOUT: VULNERABILITIES + REMEDIATION */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+.vuln-remediation-grid {
     display: grid;
-    gap: 1.5rem;
+    gap: 2rem;
+    margin-top: 2rem;
 }
 
-.vulnerability-card {
+.analysis-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
     background: white;
-    border: 1px solid #e5e7eb;
     border-radius: 16px;
-    overflow: hidden;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-left: 6px solid #6b7280;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.vulnerability-card:hover {
-    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+.analysis-pair:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     transform: translateY(-2px);
 }
 
-.vulnerability-card.critical {
-    border-left: 6px solid #dc2626;
+/* Border colors by severity */
+.analysis-pair.critical-border { border-left-color: #dc2626; }
+.analysis-pair.high-border { border-left-color: #ea580c; }
+.analysis-pair.medium-border { border-left-color: #d97706; }
+.analysis-pair.low-border { border-left-color: #16a34a; }
+.analysis-pair.info-border { border-left-color: #0ea5e9; }
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* LEFT SIDE: Vulnerability */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.vulnerability-side {
+    border-right: 2px solid #e5e7eb;
+    padding-right: 1.5rem;
 }
 
-.vulnerability-card.high {
-    border-left: 6px solid #ea580c;
+.vuln-header-compact {
+    margin-bottom: 1rem;
 }
 
-.vulnerability-card.medium {
-    border-left: 6px solid #d97706;
-}
-
-.vulnerability-card.low {
-    border-left: 6px solid #16a34a;
-}
-
-.vulnerability-card.info {
-    border-left: 6px solid #0ea5e9;
-}
-
-.vuln-header {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    padding: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-}
-
-.vuln-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
-    flex: 1;
-}
-
-.vuln-badges {
+.vuln-badge-row {
     display: flex;
     gap: 0.5rem;
-    flex-shrink: 0;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .badge {
@@ -270,142 +287,127 @@ body {
     color: white;
 }
 
-.vuln-body {
-    padding: 1.5rem;
+.vuln-title-compact {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+    line-height: 1.4;
 }
 
-.vuln-meta {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+.vuln-body-compact {
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
-    margin-bottom: 1.5rem;
 }
 
-.meta-item {
-    background: #f8fafc;
+.vuln-meta-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     padding: 0.75rem;
+    background: #f8fafc;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
 }
 
-.meta-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
+.meta-item-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
 }
 
-.meta-value {
+.meta-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.meta-text {
+    color: #475569;
     font-weight: 500;
-    color: #1f2937;
+    word-break: break-all;
 }
 
-.meta-value a {
+.meta-text-small {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-all;
+}
+
+.meta-link {
     color: #4f46e5;
     text-decoration: none;
+    font-weight: 500;
 }
 
-.meta-value a:hover {
+.meta-link:hover {
     text-decoration: underline;
 }
 
-.vuln-description,
-.vuln-code,
-.vuln-remediation {
-    margin-bottom: 1.5rem;
-}
-
-.vuln-description h4,
-.vuln-code h4,
-.vuln-remediation h4 {
-    font-size: 1rem;
+.vuln-description-compact h4,
+.vuln-code-compact h4,
+.vuln-advice-compact h4 {
+    font-size: 0.875rem;
     font-weight: 600;
     color: #374151;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.code-block {
+.vuln-description-compact p {
+    font-size: 0.9rem;
+    color: #4b5563;
+    line-height: 1.6;
+}
+
+.code-block-compact {
     background: #0f172a;
     color: #e2e8f0;
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 0.75rem;
+    border-radius: 6px;
     font-family: 'JetBrains Mono', 'Fira Code', Monaco, monospace;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     overflow-x: auto;
     line-height: 1.5;
     border: 1px solid #334155;
 }
 
-.advice-content {
+.advice-content-compact {
     background: #dbeafe;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #3b82f6;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #3b82f6;
     color: #1e40af;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
 }
 
-/* === NO VULNERABILITIES === */
-.no-vulnerabilities {
-    text-align: center;
-    padding: 4rem 2rem;
-    background: linear-gradient(135deg, #22c55e, #16a34a);
-    color: white;
-    border-radius: 16px;
+/* ─────────────────────────────────────────────────────────────────────── */
+/* RIGHT SIDE: Remediation Plan */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.remediation-side {
+    padding-left: 1.5rem;
 }
 
-.no-vulns-icon {
-    font-size: 4rem;
+.remediation-header-compact {
     margin-bottom: 1rem;
 }
 
-.no-vulnerabilities h2 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
-}
-
-/* === REMEDIATION === */
-.remediation-summary {
-    background: #f0f9ff;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #0ea5e9;
-    margin-bottom: 2rem;
-}
-
-.remediation-plans {
-    display: grid;
-    gap: 2rem;
-}
-
-.remediation-card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.plan-header {
+.plan-priority-row {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.plan-header h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .priority-badge {
     padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    border-radius: 12px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -431,38 +433,71 @@ body {
     color: white;
 }
 
-.plan-meta {
+.complexity-badge {
+    background: #e5e7eb;
+    color: #374151;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.plan-title-compact {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.plan-body-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.plan-stats-row {
     display: flex;
     gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 
-.plan-stat {
-    background: #f3f4f6;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-icon {
+    font-size: 1rem;
+}
+
+.stat-text {
     font-size: 0.875rem;
     font-weight: 500;
+    color: #475569;
 }
 
-.plan-steps {
-    margin-bottom: 1.5rem;
+.plan-steps-compact {
+    margin-top: 0.5rem;
 }
 
-.plan-steps h4 {
-    font-size: 1rem;
+.plan-steps-compact h4 {
+    font-size: 0.875rem;
     font-weight: 600;
-    margin-bottom: 1rem;
     color: #374151;
+    margin-bottom: 0.75rem;
 }
 
-.plan-steps ol {
+.steps-list-compact {
     list-style: none;
     counter-reset: step-counter;
+    padding: 0;
+    margin: 0;
 }
 
-.remediation-step {
+.step-item-compact {
     counter-increment: step-counter;
     margin-bottom: 1rem;
     padding: 1rem;
@@ -473,7 +508,7 @@ body {
     padding-left: 3rem;
 }
 
-.remediation-step::before {
+.step-item-compact::before {
     content: counter(step-counter);
     position: absolute;
     left: 1rem;
@@ -490,37 +525,69 @@ body {
     font-size: 0.875rem;
 }
 
-.step-header {
+.step-header-inline {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 0.5rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
-.step-meta {
-    font-size: 0.75rem;
+.step-header-inline strong {
+    color: #1f2937;
+    font-size: 0.9rem;
+}
+
+.step-meta-badge {
+    font-size: 0.7rem;
     color: #6b7280;
     background: #e5e7eb;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
+    white-space: nowrap;
 }
 
-.step-description {
+.step-description-text {
     color: #4b5563;
-    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
 }
 
-.step-code {
+.step-code-details {
+    margin-top: 0.5rem;
+}
+
+.code-toggle {
+    cursor: pointer;
+    color: #4f46e5;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem;
+    background: #f3f4f6;
+    border-radius: 6px;
+    display: inline-block;
+    transition: background 0.2s;
+}
+
+.code-toggle:hover {
+    background: #e5e7eb;
+}
+
+.step-code-example {
     background: #f3f4f6;
     color: #374151;
     padding: 0.75rem;
     border-radius: 6px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     border: 1px solid #d1d5db;
+    overflow-x: auto;
+    margin-top: 0.5rem;
 }
 
-.risk-warning {
+.risk-warning-compact {
     background: #fef2f2;
     padding: 1rem;
     border-radius: 8px;
@@ -528,12 +595,128 @@ body {
     color: #991b1b;
 }
 
-.risk-warning h5 {
+.risk-warning-compact h5 {
     font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.risk-warning-compact p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.plan-references {
+    background: #f0f9ff;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #0ea5e9;
+}
+
+.plan-references h5 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
     margin-bottom: 0.5rem;
 }
 
-/* === TECHNICAL DETAILS === */
+.references-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.references-list li {
+    margin-bottom: 0.25rem;
+}
+
+.references-list a {
+    color: #0ea5e9;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.references-list a:hover {
+    text-decoration: underline;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* NO PLAN AVAILABLE */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.no-plan-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    border: 2px dashed #cbd5e1;
+}
+
+.no-plan-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.no-plan-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.no-plan-card p {
+    color: #64748b;
+    margin-bottom: 1rem;
+}
+
+.manual-review-box {
+    background: #fff7ed;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #f59e0b;
+    text-align: left;
+    margin-top: 1rem;
+}
+
+.manual-review-box strong {
+    display: block;
+    color: #92400e;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.manual-review-box p {
+    color: #78350f;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* NO VULNERABILITIES */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+.no-vulnerabilities {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border-radius: 16px;
+}
+
+.no-vulns-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.no-vulnerabilities h2 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* TECHNICAL DETAILS */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .technical-details {
     background: #f8fafc;
     border: 1px solid #e5e7eb;
@@ -620,7 +803,10 @@ body {
     word-wrap: break-word;
 }
 
-/* === FOOTER === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* FOOTER */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 .footer {
     background: #1f2937;
     color: white;
@@ -632,7 +818,29 @@ body {
     margin-bottom: 0.5rem;
 }
 
-/* === RESPONSIVE DESIGN === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* RESPONSIVE DESIGN */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+    .analysis-pair {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .vulnerability-side {
+        border-right: none;
+        border-bottom: 2px solid #e5e7eb;
+        padding-right: 0;
+        padding-bottom: 1.5rem;
+    }
+    
+    .remediation-side {
+        padding-left: 0;
+        padding-top: 1.5rem;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         margin: 10px;
@@ -659,32 +867,20 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .vuln-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .vuln-meta {
-        grid-template-columns: 1fr;
-    }
-    
-    .plan-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-    }
-    
-    .plan-meta {
+    .vuln-badge-row {
         flex-direction: column;
     }
     
-    .step-header {
+    .step-header-inline {
         flex-direction: column;
         align-items: flex-start;
     }
 }
 
-/* === ANIMATIONS === */
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* ANIMATIONS */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -700,7 +896,14 @@ body {
     animation: fadeIn 0.6s ease-out;
 }
 
-/* === PRINT STYLES === */
+.analysis-pair {
+    animation: fadeIn 0.6s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════ */
+/* PRINT STYLES */
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 @media print {
     body {
         background: white;
@@ -729,10 +932,14 @@ body {
         display: none;
     }
     
-    .vulnerability-card {
+    .analysis-pair {
         break-inside: avoid;
         page-break-inside: avoid;
         margin-bottom: 1rem;
+    }
+    
+    .step-code-details[open] {
+        display: block;
     }
 }
 </style>
