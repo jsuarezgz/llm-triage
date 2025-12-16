@@ -156,12 +156,11 @@
                             </span>
                         </div>
                         
-                        <div class="plan-meta">
-                            <span class="plan-stat">⏱️ {{ plan.total_estimated_hours }}h</span>
-                            <span class="plan-stat">📊 Complexity: {{ plan.complexity_score }}/10</span>
-                            <span class="plan-stat">📋 {{ plan.steps | length }} steps</span>
-                        </div>
-                        
+							<div class="plan-meta">
+								<span class="plan-stat">📊 Complexity: {{ plan.complexity_score }}/10</span>
+								<span class="plan-stat">📋 {{ plan.steps | length }} steps</span>
+							</div>
+
                         <div class="plan-steps">
                             <h4>Implementation Steps:</h4>
                             <ol>

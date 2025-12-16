@@ -129,13 +129,13 @@ class RemediationService:
                 steps=self._customize_steps(template_plan.steps, vuln),
                 risk_if_not_fixed=template_plan.risk_if_not_fixed,
                 references=template_plan.references,
-                total_estimated_hours=template_plan.total_estimated_hours,
                 complexity_score=self._adjust_complexity(template_plan.complexity_score, vuln),
                 llm_model_used=template_plan.llm_model_used
             )
             individual_plans.append(customized_plan)
         
         return individual_plans
+
     
     def _calculate_priority(self, vulnerability: Vulnerability) -> str:
         """Calculate priority level based on vulnerability characteristics"""
@@ -246,7 +246,6 @@ class RemediationService:
                 priority_level=self._calculate_priority(vuln),
                 steps=basic_steps,
                 risk_if_not_fixed=f"Security risk associated with {vuln.type.value}",
-                total_estimated_hours=3.25,
                 complexity_score=5.0,
                 llm_model_used="fallback"
             )

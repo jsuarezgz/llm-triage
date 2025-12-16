@@ -38,6 +38,7 @@ GUIDELINES:
 - Provide clear, technical reasoning
 - Focus on actual exploitability, not theoretical risks"""
 
+
     def get_remediation_system_prompt(self, vuln_type: str, 
                                      language: Optional[str] = None,
                                      severity: str = "HIGH") -> str:
@@ -88,13 +89,15 @@ Each remediation step MUST include:
 
 # OUTPUT FORMAT (STRICT JSON)
 
-Return ONLY valid JSON (no markdown, no code block wrapper):
 
+Return ONLY valid JSON (no markdown, no code block wrapper):
 {{
   "vulnerability_id": "exact_id_from_input",
   "vulnerability_type": "{vuln_type}",
   "priority_level": "immediate|high|medium|low",
-  "estimated_effort": "30min-1h|1-2h|2-4h|1-2 days",
+  
+  "complexity_score": 6.5,
+  /* Complexity from 0.0 (trivial) to 10.0 (very complex) */
   
   "steps": [
     {{
@@ -131,8 +134,6 @@ Return ONLY valid JSON (no markdown, no code block wrapper):
     "https://cwe.mitre.org/data/definitions/[number].html"
   ],
   
-  "total_estimated_hours": 2.5,
-  "complexity_score": 6.5,
   "llm_model_used": "{model_name}",
   
   "dependencies": [

@@ -25,7 +25,7 @@ from infrastructure.config import settings
 # ============================================================================
 
 @click.group()
-@click.version_option("3.0", prog_name="LLM Vulnerability Triage")
+@click.version_option("1.0", prog_name="LLM Vulnerability Triage")
 def cli():
     """🛡️ LLM Vulnerability Triage v1.0 - Advanced Security Analysis"""
     pass
@@ -43,7 +43,7 @@ def cli():
 def analyze(input_file, output, verbose, no_dedup):
     """Analyze security vulnerabilities from SAST results"""
     
-    click.echo("🛡️  LLM Vulnerability Triage v3.0\n")
+    click.echo("🛡️  LLM Vulnerability Triage v1.0\n")
     click.echo(f"📁 {Path(input_file).name} → {output}")
     
     if no_dedup:
@@ -210,30 +210,15 @@ def examples():
    
    # Disable duplicate removal (keep all duplicates)
    security-analyzer analyze scan.json --no-remove-duplicates
-   
-   # Change deduplication strategy
-   security-analyzer analyze scan.json --dedup-strategy strict
+ 
    
    # Combined: CVSS + Deduplication
    security-analyzer analyze scan.json --min-cvss 6.5 --dedup-strategy loose
 
-🔄 DEDUPLICATION STRATEGIES:
-   • strict:   Exact match (file, line, type, description hash)
-               - Safest, removes ~15-25% duplicates
-   
-   • moderate: Similar location (±5 lines) + same type + 80% description match
-               - Recommended, removes ~25-35% duplicates [DEFAULT]
-   
-   • loose:    Fuzzy matching (same type, 70%+ description similarity)
-               - Aggressive, removes ~35-50% duplicates
-
 🧩 CHUNKING OPTIONS:
    # Force or disable chunking
-   security-analyzer analyze large_scan.json --force-chunking
    security-analyzer analyze small_scan.json --disable-chunking
 
-   # Open in browser after generation
-   security-analyzer analyze results.json --open-browser
 
 🔧 SYSTEM COMMANDS:
    security-analyzer setup              # Test configuration

@@ -149,17 +149,16 @@ class RemediationStep(BaseModel):
     estimated_minutes: Optional[int] = Field(None, ge=1)
     difficulty: str = Field(default="medium", pattern=r"^(easy|medium|hard)$")
     tools_required: List[str] = Field(default_factory=list)
-
+    
 class RemediationPlan(BaseModel):
     """Plan de remediación consolidado"""
     vulnerability_id: str
     vulnerability_type: VulnerabilityType
     priority_level: str = Field(..., pattern=r"^(immediate|high|medium|low)$")
-    steps: List[RemediationStep] = Field(..., min_length=1)
-    risk_if_not_fixed: str
-    references: List[str] = Field(default_factory=list)
-    total_estimated_hours: Optional[float] = Field(None, ge=0.1)
     complexity_score: float = Field(ge=0.0, le=10.0, default=5.0)
+    steps: List[RemediationStep] = Field(..., min_length=1)
+    risk_if_not_fixed: Optional[str] = "Security vulnerability should be remediated to prevent potential exploitation."
+    references: List[str] = Field(default_factory=list)
     llm_model_used: str
     created_at: datetime = Field(default_factory=datetime.now)
 

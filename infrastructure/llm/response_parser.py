@@ -1,13 +1,13 @@
 # infrastructure/llm/response_parser.py
 """
-🔧 LLM Response Parser - Limpieza, validación y parsing de respuestas JSON
+LLM Response Parser - Cleaning, validation and parsing of JSON responses
 
 Features:
-- ✅ Limpieza avanzada con markdown wrappers
-- ✅ Extracción inteligente con stack balancing
-- ✅ Validación pre-parsing
-- ✅ Parsing a modelos Pydantic
-- ✅ Corrección de escapes inválidos
+- Advanced cleaning with markdown wrappers
+- Intelligent extraction with stack balancing
+- Pre-parsing validation
+- Parsing to Pydantic models
+- Invalid escape correction
 """
 
 import json
@@ -31,13 +31,13 @@ logger = logging.getLogger(__name__)
 
 class LLMResponseParser:
     """
-    Parser especializado para respuestas de LLM
+    Specialized parser for LLM responses
     
-    Responsabilidades:
-    - Limpieza de JSON con markdown/noise
-    - Validación de estructura JSON
-    - Extracción inteligente de JSON
-    - Parsing a modelos de dominio (TriageResult, RemediationPlan)
+    Responsibilities:
+    - Cleaning JSON with markdown/noise
+    - JSON structure validation
+    - Intelligent JSON extraction
+    - Parsing to domain models (TriageResult, RemediationPlan)
     """
     
     def __init__(self, debug_enabled: bool = False):
@@ -50,35 +50,35 @@ class LLMResponseParser:
     
     def parse_triage_response(self, llm_response: str, original_data: str = None) -> TriageResult:
         """
-        Parsear respuesta LLM a TriageResult
+        Parse LLM response to TriageResult
         
         Args:
-            llm_response: Respuesta cruda del LLM
-            original_ Datos originales (para contexto en errores)
+            llm_response: Raw LLM response
+            original_ Original data (for context in errors)
             
         Returns:
-            TriageResult validado
+            Validated TriageResult
             
         Raises:
-            LLMError: Si el parsing falla después de intentos de recuperación
+            LLMError: If parsing fails after recovery attempts
         """
         
-        logger.info(f"📥 Parsing triage response ({len(llm_response):,} chars)...")
+        logger.info(f"Parsing triage response ({len(llm_response):,} chars)...")
         
         try:
-            # Paso 1: Limpiar respuesta
+            # Step 1: Clean response
             cleaned = self.clean_json_response(llm_response)
             
-            # Paso 2: Validar estructura
+            # Step 2: Validate structure
             validation = self.validate_json_structure(cleaned)
             
             if not validation['is_valid']:
-                logger.error(f"❌ JSON structure validation failed:")
+                logger.error(f"JSON structure validation failed:")
                 for error in validation['errors']:
-                    logger.error(f"   • {error}")
+                    logger.error(f"   - {error}")
                 
-                # Intentar recuperación
-                logger.info("🔧 Attempting recovery...")
+                # Attempt recovery
+                logger.info("Attempting recovery...")
                 extracted = self.extract_json(
                     cleaned, 
                     required_fields=['decisions', 'analysis_summary']
@@ -86,18 +86,18 @@ class LLMResponseParser:
                 
                 if extracted:
                     cleaned = extracted
-                    logger.info("✅ Recovery successful")
+                    logger.info("Recovery successful")
                 else:
                     raise LLMError(f"JSON structure invalid: {validation['errors']}")
             
-            # Paso 3: Parsear JSON
+            # Step 3: Parse JSON
             try:
                 response_data = json.loads(cleaned)
-                logger.info(f"✅ JSON parsed successfully")
+                logger.info(f"JSON parsed successfully")
             except json.JSONDecodeError as e:
-                logger.error(f"❌ JSON parsing failed: {e}")
+                logger.error(f"JSON parsing failed: {e}")
                 
-                # Último intento de recuperación
+                # Last recovery attempt
                 extracted = self.extract_json(
                     llm_response,
                     required_fields=['decisions', 'analysis_summary']
@@ -106,24 +106,24 @@ class LLMResponseParser:
                 if extracted:
                     try:
                         response_data = json.loads(extracted)
-                        logger.info("✅ Recovery parse successful")
+                        logger.info("Recovery parse successful")
                     except Exception:
                         raise LLMError(f"Failed to parse triage response: {e}")
                 else:
                     raise LLMError(f"Failed to parse triage response: {e}")
             
-            # Paso 4: Validar campos requeridos
+            # Step 4: Validate required fields
             self._validate_required_fields(
                 response_data,
                 required_fields=['decisions'],
                 response_type='triage'
             )
             
-            # Paso 5: Crear TriageResult (Pydantic validará)
+            # Step 5: Create TriageResult (Pydantic will validate)
             triage_result = TriageResult(**response_data)
             
-            # Paso 6: Log resultados
-            logger.info(f"✅ TriageResult created successfully")
+            # Step 6: Log results
+            logger.info(f"TriageResult created successfully")
             logger.info(f"   Total analyzed: {triage_result.total_analyzed}")
             logger.info(f"   Confirmed: {triage_result.confirmed_count}")
             logger.info(f"   False positives: {triage_result.false_positive_count}")
@@ -132,7 +132,7 @@ class LLMResponseParser:
             return triage_result
             
         except Exception as e:
-            logger.error(f"❌ Triage parsing failed: {e}")
+            logger.error(f"Triage parsing failed: {e}")
             logger.exception("Full traceback:")
             raise LLMError(f"Failed to parse triage response: {e}")
     
@@ -142,35 +142,35 @@ class LLMResponseParser:
                                    vuln_type: str = None, 
                                    language: str = None) -> RemediationPlan:
         """
-        Parsear respuesta LLM a RemediationPlan
+        Parse LLM response to RemediationPlan
         
         Args:
-            llm_response: Respuesta cruda del LLM
-            vuln_type: Tipo de vulnerabilidad (para logging)
-            language: Lenguaje (para normalización)
+            llm_response: Raw LLM response
+            vuln_type: Vulnerability type (for logging)
+            language: Language (for normalization)
             
         Returns:
-            RemediationPlan validado
+            Validated RemediationPlan
             
         Raises:
-            LLMError: Si el parsing falla
+            LLMError: If parsing fails
         """
         
-        logger.info(f"📥 Parsing remediation response ({len(llm_response):,} chars)...")
+        logger.info(f"Parsing remediation response ({len(llm_response):,} chars)...")
         
         try:
-            # Paso 1: Limpiar respuesta
+            # Step 1: Clean response
             cleaned = self.clean_json_response(llm_response)
             
-            # Paso 2: Validar estructura
+            # Step 2: Validate structure
             validation = self.validate_json_structure(cleaned)
             
             if not validation['is_valid']:
-                logger.error(f"❌ JSON structure validation failed:")
+                logger.error(f"JSON structure validation failed:")
                 for error in validation['errors']:
-                    logger.error(f"   • {error}")
+                    logger.error(f"   - {error}")
                 
-                # Intentar recuperación
+                # Attempt recovery
                 extracted = self.extract_json(
                     cleaned,
                     required_fields=['vulnerability_type', 'priority_level', 'steps']
@@ -178,18 +178,18 @@ class LLMResponseParser:
                 
                 if extracted:
                     cleaned = extracted
-                    logger.info("✅ Recovery successful")
+                    logger.info("Recovery successful")
                 else:
                     raise LLMError(f"JSON structure invalid: {validation['errors']}")
             
-            # Paso 3: Parsear JSON
+            # Step 3: Parse JSON
             try:
                 response_data = json.loads(cleaned)
-                logger.info(f"✅ JSON parsed successfully")
+                logger.info(f"JSON parsed successfully")
             except json.JSONDecodeError as e:
-                logger.error(f"❌ JSON parsing failed: {e}")
+                logger.error(f"JSON parsing failed: {e}")
                 
-                # Último intento
+                # Last attempt
                 extracted = self.extract_json(
                     llm_response,
                     required_fields=['vulnerability_type', 'priority_level', 'steps']
@@ -198,30 +198,30 @@ class LLMResponseParser:
                 if extracted:
                     try:
                         response_data = json.loads(extracted)
-                        logger.info("✅ Recovery parse successful")
+                        logger.info("Recovery parse successful")
                     except Exception:
                         raise LLMError(f"Failed to parse remediation response: {e}")
                 else:
                     raise LLMError(f"Failed to parse remediation response: {e}")
             
-            # Paso 4: Validar campos requeridos
+            # Step 4: Validate required fields
             self._validate_required_fields(
                 response_data,
                 required_fields=['vulnerability_type', 'priority_level', 'steps'],
                 response_type='remediation'
             )
             
-            # Paso 5: Normalizar datos
+            # Step 5: Normalize data
             response_data = self._normalize_remediation_data(response_data, vuln_type)
             
-            # Paso 6: Crear RemediationPlan
+            # Step 6: Create RemediationPlan
             remediation_plan = RemediationPlan(**response_data)
             
-            # Paso 7: Validar calidad
+            # Step 7: Validate quality
             self._validate_remediation_quality(remediation_plan)
             
-            # Paso 8: Log resultados
-            logger.info(f"✅ RemediationPlan created successfully")
+            # Step 8: Log results
+            logger.info(f"RemediationPlan created successfully")
             logger.info(f"   Type: {remediation_plan.vulnerability_type.value}")
             logger.info(f"   Priority: {remediation_plan.priority_level}")
             logger.info(f"   Steps: {len(remediation_plan.steps)}")
@@ -229,7 +229,7 @@ class LLMResponseParser:
             return remediation_plan
             
         except Exception as e:
-            logger.error(f"❌ Remediation parsing failed: {e}")
+            logger.error(f"Remediation parsing failed: {e}")
             logger.exception("Full traceback:")
             raise LLMError(f"Failed to parse remediation response: {e}")
     
@@ -240,37 +240,37 @@ class LLMResponseParser:
     
     def clean_json_response(self, response: str) -> str:
         """
-        Limpiar respuesta eliminando markdown, prefijos y ruido
+        Clean response by removing markdown, prefixes and noise
         
-        Maneja:
+        Handles:
         - Markdown wrappers: ```json ... ```
-        - Prefijos anómalos: L3##, etc
-        - Líneas no-JSON al inicio/final
-        - Caracteres de escape inválidos
+        - Anomalous prefixes: L3##, etc
+        - Non-JSON lines at start/end
+        - Invalid escape characters
         
         Args:
-            response: Respuesta cruda del LLM
+            response: Raw LLM response
             
         Returns:
-            JSON limpio y válido
+            Clean and valid JSON
         """
         
         original_length = len(response)
         cleaned = response.strip()
         
         if self.debug_enabled:
-            logger.debug(f"🧹 Starting JSON cleaning (original: {original_length} chars)")
+            logger.debug(f"Starting JSON cleaning (original: {original_length} chars)")
         
-        # Paso 1: Remover wrapper markdown completo
+        # Step 1: Remove complete markdown wrapper
         markdown_pattern = r'^```(?:json)?\s*\n(.*?)\n\s*```$'
         markdown_match = re.match(markdown_pattern, cleaned, re.DOTALL)
         
         if markdown_match:
             cleaned = markdown_match.group(1).strip()
             if self.debug_enabled:
-                logger.debug("✅ Removed markdown wrapper (```json ...```)")
+                logger.debug("Removed markdown wrapper (```json ...```)")
         
-        # Paso 2: Remover prefijos anómalos
+        # Step 2: Remove anomalous prefixes
         anomalous_prefixes = [
             'L3##```json\n', 'L3##json', 'L3##\n', 'L3##',
             '```json\n', '```json', '```\n', '```', 'json\n'
@@ -280,20 +280,20 @@ class LLMResponseParser:
             if cleaned.startswith(prefix):
                 cleaned = cleaned[len(prefix):].lstrip()
                 if self.debug_enabled:
-                    logger.debug(f"✅ Removed prefix: '{prefix[:15]}'")
+                    logger.debug(f"Removed prefix: '{prefix[:15]}'")
                 break
         
-        # Paso 3: Remover sufijos
+        # Step 3: Remove suffixes
         anomalous_suffixes = ['\n```', '```', '`']
         
         for suffix in anomalous_suffixes:
             if cleaned.endswith(suffix):
                 cleaned = cleaned[:-len(suffix)].rstrip()
                 if self.debug_enabled:
-                    logger.debug(f"✅ Removed suffix: '{suffix}'")
+                    logger.debug(f"Removed suffix: '{suffix}'")
                 break
         
-        # Paso 4: Limpiar líneas no-JSON al inicio
+        # Step 4: Clean non-JSON lines at start
         lines = cleaned.split('\n')
         json_start_index = 0
         
@@ -306,9 +306,9 @@ class LLMResponseParser:
         if json_start_index > 0:
             cleaned = '\n'.join(lines[json_start_index:])
             if self.debug_enabled:
-                logger.debug(f"✅ Skipped {json_start_index} non-JSON lines at start")
+                logger.debug(f"Skipped {json_start_index} non-JSON lines at start")
         
-        # Paso 5: Limpiar líneas no-JSON al final
+        # Step 5: Clean non-JSON lines at end
         lines = cleaned.split('\n')
         json_end_index = len(lines)
         
@@ -322,34 +322,34 @@ class LLMResponseParser:
             skipped = len(lines) - json_end_index
             cleaned = '\n'.join(lines[:json_end_index])
             if self.debug_enabled:
-                logger.debug(f"✅ Skipped {skipped} non-JSON lines at end")
+                logger.debug(f"Skipped {skipped} non-JSON lines at end")
         
-        # Paso 6: Validar que no esté vacío
+        # Step 6: Validate not empty
         cleaned = cleaned.strip()
         if not cleaned:
             raise ValueError("Response is empty after cleaning")
         
-        # Paso 7: Corregir escapes inválidos
+        # Step 7: Fix invalid escapes
         cleaned = self._fix_escape_sequences(cleaned)
         
-        # Log final
+        # Final log
         final_length = len(cleaned)
         bytes_removed = original_length - final_length
         if self.debug_enabled:
-            logger.debug(f"✅ Cleaning complete: {bytes_removed} bytes removed ({original_length} → {final_length})")
+            logger.debug(f"Cleaning complete: {bytes_removed} bytes removed ({original_length} -> {final_length})")
         
         return cleaned
     
     
     def validate_json_structure(self, text: str) -> Dict[str, Any]:
         """
-        Validar estructura JSON antes de parsear
+        Validate JSON structure before parsing
         
         Args:
-            text: Texto que debería ser JSON
+            text: Text that should be JSON
             
         Returns:
-            Dict con información de validación:
+            Dict with validation info:
             {
                 'is_valid': bool,
                 'errors': List[str],
@@ -363,7 +363,7 @@ class LLMResponseParser:
             'warnings': []
         }
         
-        # Verificar delimitadores balanceados
+        # Check balanced delimiters
         open_braces = text.count('{')
         close_braces = text.count('}')
         open_brackets = text.count('[')
@@ -377,39 +377,58 @@ class LLMResponseParser:
             validation['is_valid'] = False
             validation['errors'].append(f"Unbalanced brackets: {open_brackets} open, {close_brackets} close")
         
-        # Verificar que empiece con { o [
+        # Check starts with { or [
         if not text.startswith(('{', '[')):
             validation['warnings'].append(f"JSON doesn't start with {{ or [")
         
-        # Verificar que termine con } o ]
+        # Check ends with } or ]
         if not text.endswith(('}', ']')):
             validation['warnings'].append(f"JSON doesn't end with }} or ]")
         
         return validation
     
-    
     def extract_json(self, text: str, required_fields: List[str] = None) -> Optional[str]:
         """
-        Extraer JSON de texto con ruido usando múltiples estrategias
+        Extract JSON from noisy text using multiple strategies
         
-        Estrategias (en orden de prioridad):
-        1. Stack-based balancing con validación de estructura
+        Strategies (in priority order):
+        1. Stack-based balancing with structure validation
         2. Regex pattern matching
         3. Simple first/last delimiter
         
         Args:
-            text: Texto con JSON mezclado con ruido
-            required_fields: Campos requeridos para considerar JSON válido
+            text: Text with JSON mixed with noise
+            required_fields: Required fields to consider JSON valid
             
         Returns:
-            JSON extraído o None si falla
+            Extracted JSON or None if fails
         """
         
-        logger.info("🔧 Attempting aggressive JSON extraction...")
+        logger.info("Attempting aggressive JSON extraction...")
         if required_fields:
             logger.debug(f"   Required fields: {required_fields}")
         
-        # === MÉTODO 1: Stack-based balancing ===
+        # === METHOD 0: Try to balance brackets/braces FIRST ===
+        try:
+            logger.info("Trying auto-balance method...")
+            balanced = self._balance_json_delimiters(text)
+            if balanced and balanced != text:  # Only if changes were made
+                try:
+                    parsed = json.loads(balanced)
+                    has_required = self._has_required_fields(parsed, required_fields)
+                    
+                    if has_required:
+                        logger.info(f"Auto-balance successful with all required fields ({len(balanced)} chars)")
+                        return balanced
+                    else:
+                        logger.warning("Auto-balanced JSON missing required fields")
+                        # Continue to other methods
+                except json.JSONDecodeError as e:
+                    logger.debug(f"   Auto-balanced JSON invalid: {e}")
+        except Exception as e:
+            logger.debug(f"   Balance attempt failed: {e}")
+        
+        # === METHOD 1: Stack-based balancing (existing code) ===
         try:
             possible_jsons = []
             
@@ -425,11 +444,11 @@ class LLMResponseParser:
                             stack.append('{')
                         elif text[j] == '}':
                             stack.pop()
-                            if not stack:  # JSON completo encontrado
+                            if not stack:  # Complete JSON found
                                 end_pos = j + 1
                                 candidate = text[start_pos:end_pos]
                                 
-                                # Intentar parsear y validar
+                                # Try to parse and validate
                                 try:
                                     parsed = json.loads(candidate)
                                     has_required = self._has_required_fields(parsed, required_fields)
@@ -452,7 +471,7 @@ class LLMResponseParser:
             if possible_jsons:
                 logger.info(f"   Found {len(possible_jsons)} valid JSON objects")
                 
-                # Priorizar por: campos requeridos > tamaño
+                # Prioritize by: required fields > size
                 possible_jsons.sort(key=lambda x: (
                     x['has_required_fields'],
                     x['length']
@@ -461,11 +480,11 @@ class LLMResponseParser:
                 best_candidate = possible_jsons[0]
                 
                 if best_candidate['has_required_fields']:
-                    logger.info(f"✅ Stack extraction successful ({best_candidate['length']} chars)")
+                    logger.info(f"Stack extraction successful ({best_candidate['length']} chars)")
                     logger.debug(f"   Fields found: {best_candidate['available_fields']}")
                     return best_candidate['json']
                 else:
-                    logger.warning(f"⚠️ Best candidate missing required fields")
+                    logger.warning(f"Best candidate missing required fields")
                     logger.warning(f"   Required: {required_fields}")
                     logger.warning(f"   Available: {best_candidate['available_fields']}")
                     logger.info(f"   Using largest JSON anyway ({best_candidate['length']} chars)")
@@ -476,11 +495,11 @@ class LLMResponseParser:
         except Exception as e:
             logger.debug(f"   Stack extraction failed: {e}")
         
-        # === MÉTODO 2: Regex pattern matching ===
-        logger.info("🔧 Trying regex extraction...")
+        # === METHOD 2: Regex pattern matching ===
+        logger.info("Trying regex extraction...")
         
         try:
-            # Buscar patrón {...} con contenido
+            # Search for {...} pattern with content
             pattern = r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}'
             matches = re.findall(pattern, text, re.DOTALL)
             
@@ -504,7 +523,7 @@ class LLMResponseParser:
                         continue
                 
                 if valid_matches:
-                    # Ordenar por campos requeridos + tamaño
+                    # Sort by required fields + size
                     valid_matches.sort(key=lambda x: (
                         x['has_required_fields'],
                         x['length']
@@ -513,17 +532,17 @@ class LLMResponseParser:
                     best = valid_matches[0]
                     
                     if best['has_required_fields']:
-                        logger.info(f"✅ Regex extracted valid JSON ({best['length']} chars)")
+                        logger.info(f"Regex extracted valid JSON ({best['length']} chars)")
                         return best['json']
                     else:
-                        logger.warning(f"⚠️ Using largest regex match without required fields")
+                        logger.warning(f"Using largest regex match without required fields")
                         return best['json']
         
         except Exception as e:
             logger.debug(f"   Regex extraction failed: {e}")
         
-        # === MÉTODO 3: Simple first/last delimiter ===
-        logger.info("🔧 Trying simple first/last delimiter...")
+        # === METHOD 3: Simple first/last delimiter ===
+        logger.info("Trying simple first/last delimiter...")
         
         try:
             first_brace = text.find('{')
@@ -536,10 +555,10 @@ class LLMResponseParser:
                     has_required = self._has_required_fields(parsed, required_fields)
                     
                     if has_required or not required_fields:
-                        logger.info(f"✅ Simple extraction successful ({len(extracted)} chars)")
+                        logger.info(f"Simple extraction successful ({len(extracted)} chars)")
                         return extracted
                     else:
-                        logger.warning(f"⚠️ Simple extraction missing required fields")
+                        logger.warning(f"Simple extraction missing required fields")
                         return extracted
                 
                 except json.JSONDecodeError as e:
@@ -548,26 +567,98 @@ class LLMResponseParser:
         except Exception as e:
             logger.debug(f"   Simple extraction failed: {e}")
         
-        # Todos los métodos fallaron
-        logger.error("❌ All extraction methods failed")
+        # All methods failed
+        logger.error("All extraction methods failed")
         return None
     
-    
+    def _balance_json_delimiters(self, text: str) -> Optional[str]:
+        """
+        Attempt to balance unbalanced JSON by adding missing delimiters
+        
+        This handles cases where LLM responses are truncated or incomplete.
+        
+        Args:
+            text: Potentially unbalanced JSON
+            
+        Returns:
+            Balanced JSON or None
+        """
+        
+        # Count all delimiters
+        open_braces = text.count('{')
+        close_braces = text.count('}')
+        open_brackets = text.count('[')
+        close_brackets = text.count(']')
+        
+        if self.debug_enabled:
+            logger.debug(f"   Delimiters: {{:{open_braces}/{close_braces}, [:{open_brackets}/{close_brackets}")
+        
+        # If already balanced, return None (no changes needed)
+        if open_braces == close_braces and open_brackets == close_brackets:
+            return None
+        
+        balanced = text.strip()
+        changes_made = False
+        
+        # Add missing closing brackets (for arrays)
+        if open_brackets > close_brackets:
+            missing = open_brackets - close_brackets
+            logger.info(f"   ?? Adding {missing} closing bracket(s) ]")
+            balanced += '\n' + ('  ' * (missing - 1)) + ']' * missing
+            changes_made = True
+        
+        # Add missing closing braces (for objects)
+        if open_braces > close_braces:
+            missing = open_braces - close_braces
+            logger.info(f"   ?? Adding {missing} closing brace(s) }}")
+            # Add with proper indentation
+            for i in range(missing):
+                indent = '  ' * (missing - i - 1)
+                balanced += '\n' + indent + '}'
+            changes_made = True
+        
+        # Handle excess closing delimiters (less common but possible)
+        if close_brackets > open_brackets:
+            excess = close_brackets - open_brackets
+            logger.warning(f"   ?? Removing {excess} excess closing bracket(s)")
+            # Remove from end
+            for _ in range(excess):
+                last_bracket = balanced.rfind(']')
+                if last_bracket >= 0:
+                    balanced = balanced[:last_bracket] + balanced[last_bracket+1:]
+            changes_made = True
+        
+        if close_braces > open_braces:
+            excess = close_braces - open_braces
+            logger.warning(f"   ?? Removing {excess} excess closing brace(s)")
+            for _ in range(excess):
+                last_brace = balanced.rfind('}')
+                if last_brace >= 0:
+                    balanced = balanced[:last_brace] + balanced[last_brace+1:]
+            changes_made = True
+        
+        if changes_made:
+            if self.debug_enabled:
+                logger.debug(f"   Balanced result ({len(balanced)} chars)")
+            return balanced
+        
+        return None
+
     # ============================================================================
     # HELPER METHODS - PRIVATE
     # ============================================================================
     
     def _fix_escape_sequences(self, text: str) -> str:
         """
-        Corregir secuencias de escape inválidas en JSON
+        Fix invalid escape sequences in JSON
         
-        JSON válido solo acepta: \", \\, \/, \b, \f, \n, \r, \t, \uXXXX
+        Valid JSON only accepts: \\", \\\\, \\/, \\b, \\f, \\n, \\r, \\t, \\uXXXX
         
         Args:
-            text: Texto con posibles escapes inválidos
+            text: Text with possible invalid escapes
             
         Returns:
-            Texto con escapes corregidos
+            Text with corrected escapes
         """
         
         result = []
@@ -577,13 +668,13 @@ class LLMResponseParser:
             if text[i] == '\\' and i + 1 < len(text):
                 next_char = text[i + 1]
                 
-                # Escapes válidos simples
+                # Valid simple escapes
                 if next_char in ['"', '\\', '/', 'b', 'f', 'n', 'r', 't']:
                     result.append(text[i:i+2])
                     i += 2
                     continue
                 
-                # Escape unicode: \uXXXX
+                # Unicode escape: \uXXXX
                 elif next_char == 'u' and i + 5 < len(text):
                     hex_part = text[i+2:i+6]
                     if re.match(r'^[0-9a-fA-F]{4}$', hex_part):
@@ -591,9 +682,9 @@ class LLMResponseParser:
                         i += 6
                         continue
                 
-                # Escape inválido - escapar el backslash
+                # Invalid escape - escape the backslash
                 if self.debug_enabled:
-                    logger.debug(f"🔧 Fixed invalid escape: \\{next_char}")
+                    logger.debug(f"Fixed invalid escape: \\{next_char}")
                 result.append('\\\\' + next_char)
                 i += 2
             else:
@@ -605,14 +696,14 @@ class LLMResponseParser:
     
     def _has_required_fields(self, parsed: Any, required_fields: Optional[List[str]]) -> bool:
         """
-        Verificar si un objeto parseado tiene los campos requeridos
+        Check if a parsed object has required fields
         
         Args:
-            parsed: Objeto parseado (dict, list, etc)
-            required_fields: Lista de campos requeridos
+            parsed: Parsed object (dict, list, etc)
+            required_fields: List of required fields
             
         Returns:
-            True si tiene todos los campos requeridos (o si no hay campos requeridos)
+            True if has all required fields (or if no fields required)
         """
         
         if not required_fields:
@@ -625,19 +716,19 @@ class LLMResponseParser:
     
     
     def _validate_required_fields(self, 
-                                   response_ Dict[str, Any], 
+                                   response_data: Dict[str, Any],  # ? CORREGIDO
                                    required_fields: List[str],
                                    response_type: str) -> None:
         """
-        Validar que un dict tenga los campos requeridos
+        Validate that a dict has required fields
         
         Args:
-            response_ Dict con la respuesta parseada
-            required_fields: Campos que deben estar presentes
-            response_type: Tipo de respuesta (para mensajes de error)
+            response_data: Dict with parsed response
+            required_fields: Fields that must be present
+            response_type: Response type (for error messages)
             
         Raises:
-            LLMError: Si faltan campos requeridos
+            LLMError: If required fields are missing
         """
         
         if not isinstance(response_data, dict):
@@ -652,17 +743,17 @@ class LLMResponseParser:
                 f"Available: {available}"
             )
         
-        logger.debug(f"✅ All required fields present: {required_fields}")
+        logger.debug(f"All required fields present: {required_fields}")
     
     
     def _normalize_remediation_data(self, 
-                                     response_ Dict[str, Any], 
-                                     vuln_type: str = None) -> Dict[str, Any]:
+                                      response_data: Dict[str, Any],
+                                      vuln_type: str = None) -> Dict[str, Any]:
         """
         Normalizar datos de remediación para asegurar compatibilidad con RemediationPlan
         
         Args:
-            response_ Datos parseados del LLM
+            response_data: Datos parseados del LLM
             vuln_type: Tipo de vulnerabilidad (fallback)
             
         Returns:
@@ -670,40 +761,40 @@ class LLMResponseParser:
         """
         
         # Asegurar que vulnerability_id existe
-        if 'vulnerability_id' not in response_
+        if 'vulnerability_id' not in response_data:
             response_data['vulnerability_id'] = f"{vuln_type or 'unknown'}-remediation-{int(time.time())}"
             logger.warning(f"⚠️ Added missing vulnerability_id: {response_data['vulnerability_id']}")
-        
+
         # Asegurar que llm_model_used existe
-        if 'llm_model_used' not in response_
+        if 'llm_model_used' not in response_data:
             response_data['llm_model_used'] = 'meta-llama/llama-3-3-70b-instruct'
             logger.debug("   Added default llm_model_used")
-        
+
         # Validar que steps tenga contenido
         if not response_data.get('steps') or len(response_data['steps']) < 1:
             raise LLMError("Response has no remediation steps")
-        
+
         return response_data
-    
+
     
     def _validate_remediation_quality(self, plan: RemediationPlan) -> None:
         """
-        Validar calidad de los steps del plan de remediación
+        Validate quality of remediation plan steps
         
         Args:
-            plan: Plan de remediación a validar
+            plan: Remediation plan to validate
             
         Warnings:
-            Genera warnings si los steps tienen calidad baja
+            Generates warnings if steps have low quality
         """
         
         for i, step in enumerate(plan.steps, 1):
             desc_length = len(step.description)
             if desc_length < 50:
-                logger.warning(f"⚠️ Step {i} has short description ({desc_length} chars)")
+                logger.warning(f"Step {i} has short description ({desc_length} chars)")
             
             if not step.title or len(step.title) < 10:
-                logger.warning(f"⚠️ Step {i} has very short title")
+                logger.warning(f"Step {i} has very short title")
 
 
 # ============================================================================
@@ -712,12 +803,12 @@ class LLMResponseParser:
 
 def create_response_parser(debug_enabled: bool = False) -> LLMResponseParser:
     """
-    Factory function para crear parser
+    Factory function to create parser
     
     Args:
-        debug_enabled: Habilitar logging debug detallado
+        debug_enabled: Enable detailed debug logging
         
     Returns:
-        LLMResponseParser configurado
+        Configured LLMResponseParser
     """
     return LLMResponseParser(debug_enabled=debug_enabled)

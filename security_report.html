@@ -784,7 +784,7 @@ body {
                 </div>
 
                 <div class="summary-info">
-                    <p><strong>Analysis completed in 32.45s</strong></p>
+                    <p><strong>Analysis completed in 31.47s</strong></p>
                     <p>🤖 AI-powered triage analyzed 2 vulnerabilities</p>
                 </div>
             </section>
@@ -834,8 +834,7 @@ body {
                             
                             <div class="vuln-code">
                                 <h4>💻 Code Context</h4>
-                                <pre class="code-block">  1 |    
-  2 |      ELSEIF rb_ser EQ abap_true.
+                                <pre class="code-block">  2 |      ELSEIF rb_ser EQ abap_true.
   3 |        CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
   4 | &gt;&gt;     OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
   5 |        IF sy-subrc EQ 0.
@@ -903,8 +902,7 @@ body {
                             
                             <div class="vuln-code">
                                 <h4>💻 Code Context</h4>
-                                <pre class="code-block">  1 |    
-  2 |          IF sy-subrc EQ 0.
+                                <pre class="code-block">  2 |          IF sy-subrc EQ 0.
   3 |    *       Si la compresion ha ido bien, se borra el fichero original
   4 | &gt;&gt;         DELETE DATASET ld_path.
   5 |          ENDIF.
@@ -952,49 +950,50 @@ body {
                             </span>
                         </div>
                         
-                        <div class="plan-meta">
-                            <span class="plan-stat">⏱️ 3.25h</span>
-                            <span class="plan-stat">📊 Complexity: 5.0/10</span>
-                            <span class="plan-stat">📋 4 steps</span>
-                        </div>
-                        
+							<div class="plan-meta">
+								<span class="plan-stat">📊 Complexity: 8.25/10</span>
+								<span class="plan-stat">📋 2 steps</span>
+							</div>
+
                         <div class="plan-steps">
                             <h4>Implementation Steps:</h4>
                             <ol>
                                 <li class="remediation-step">
                                     <div class="step-header">
-                                        <strong>Manual Security Review</strong>
-                                        <span class="step-meta">30min • medium</span>
+                                        <strong>Validate and Sanitize File Paths</strong>
+                                        <span class="step-meta">45min • medium</span>
                                     </div>
-                                    <div class="step-description">Manually review Directory Traversal vulnerability in test-code\YAL0029.TXT</div>
+                                    <div class="step-description">To prevent directory traversal attacks, it&#39;s crucial to validate and sanitize file paths before using them in file operations. This can be achieved by checking if the provided path is within the expected directory and ensuring it doesn&#39;t contain any malicious characters or sequences that could lead to accessing unauthorized files or directories. The principle here is to ensure that the application only accesses files and directories that are intended to be accessible, thereby preventing an attacker from manipulating the path to access sensitive data. This step involves implementing a function that checks the path for any traversal attempts (like ../) and ensures the path is absolute and within the allowed directory structure.</div>
+                                    <pre class="step-code">BEFORE:
+CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
+OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
+
+AFTER:
+DATA: lv_allowed_path TYPE string.
+lv_allowed_path =...</pre>
                                 </li>
                                 <li class="remediation-step">
                                     <div class="step-header">
-                                        <strong>Research Best Practices</strong>
-                                        <span class="step-meta">15min • easy</span>
+                                        <strong>Implement Directory Traversal Protection</strong>
+                                        <span class="step-meta">60min • hard</span>
                                     </div>
-                                    <div class="step-description">Research security best practices for Directory Traversal</div>
-                                </li>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Implement Fix</strong>
-                                        <span class="step-meta">120min • hard</span>
-                                    </div>
-                                    <div class="step-description">Apply appropriate security fix based on research</div>
-                                </li>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Validate Fix</strong>
-                                        <span class="step-meta">30min • medium</span>
-                                    </div>
-                                    <div class="step-description">Test that vulnerability has been properly addressed</div>
+                                    <div class="step-description">This step involves protecting against directory traversal by ensuring that any file operation is restricted to a specific directory and its subdirectories. This can be achieved by prefixing the file path with a base directory that is known to be safe and then validating the resulting path to ensure it does not attempt to traverse outside this base directory. The security principle here is to restrict access to only those resources that are necessary for the application&#39;s functionality, thereby reducing the attack surface. Implementing this protection requires modifying the file operation code to include path validation and ensuring that all file paths used in the application are absolute and sanitized.</div>
+                                    <pre class="step-code">BEFORE:
+DELETE DATASET ld_path.
+
+AFTER:
+DATA: lv_base_path TYPE string.
+lv_base_path = &#39;/safe/base/directory/&#39;.
+IF ld_path CS lv_base_path.
+  DELETE DATASET ld_path.
+ENDIF.</pre>
                                 </li>
                             </ol>
                         </div>
                         
                         <div class="risk-warning">
                             <h5>⚠️ Risk if not addressed:</h5>
-                            <p>Security risk associated with Directory Traversal</p>
+                            <p>CONCRETE IMPACT: An attacker could exploit directory traversal vulnerabilities to access sensitive files or directories, potentially leading to data breaches or system compromise. This could result in significant financial and reputational damage, as well as potential compliance violations.</p>
                         </div>
                     </div>
                     <div class="remediation-card">
@@ -1005,49 +1004,50 @@ body {
                             </span>
                         </div>
                         
-                        <div class="plan-meta">
-                            <span class="plan-stat">⏱️ 3.25h</span>
-                            <span class="plan-stat">📊 Complexity: 5.0/10</span>
-                            <span class="plan-stat">📋 4 steps</span>
-                        </div>
-                        
+							<div class="plan-meta">
+								<span class="plan-stat">📊 Complexity: 8.25/10</span>
+								<span class="plan-stat">📋 2 steps</span>
+							</div>
+
                         <div class="plan-steps">
                             <h4>Implementation Steps:</h4>
                             <ol>
                                 <li class="remediation-step">
                                     <div class="step-header">
-                                        <strong>Manual Security Review</strong>
-                                        <span class="step-meta">30min • medium</span>
+                                        <strong>Validate and Sanitize File Paths</strong>
+                                        <span class="step-meta">45min • medium</span>
                                     </div>
-                                    <div class="step-description">Manually review Directory Traversal vulnerability in test-code\YAL0029.TXT</div>
+                                    <div class="step-description">To prevent directory traversal attacks, it&#39;s crucial to validate and sanitize file paths before using them in file operations. This can be achieved by checking if the provided path is within the expected directory and ensuring it doesn&#39;t contain any malicious characters or sequences that could lead to accessing unauthorized files or directories. The principle here is to ensure that the application only accesses files and directories that are intended to be accessible, thereby preventing an attacker from manipulating the path to access sensitive data. This step involves implementing a function that checks the path for any traversal attempts (like ../) and ensures the path is absolute and within the allowed directory structure.</div>
+                                    <pre class="step-code">BEFORE:
+CONCATENATE p_path p_nfich INTO ld_path SEPARATED BY &#39;/&#39;.
+OPEN DATASET ld_path FOR OUTPUT IN TEXT MODE ENCODING UTF-8.
+
+AFTER:
+DATA: lv_allowed_path TYPE string.
+lv_allowed_path =...</pre>
                                 </li>
                                 <li class="remediation-step">
                                     <div class="step-header">
-                                        <strong>Research Best Practices</strong>
-                                        <span class="step-meta">15min • easy</span>
+                                        <strong>Implement Directory Traversal Protection</strong>
+                                        <span class="step-meta">60min • hard</span>
                                     </div>
-                                    <div class="step-description">Research security best practices for Directory Traversal</div>
-                                </li>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Implement Fix</strong>
-                                        <span class="step-meta">120min • hard</span>
-                                    </div>
-                                    <div class="step-description">Apply appropriate security fix based on research</div>
-                                </li>
-                                <li class="remediation-step">
-                                    <div class="step-header">
-                                        <strong>Validate Fix</strong>
-                                        <span class="step-meta">30min • medium</span>
-                                    </div>
-                                    <div class="step-description">Test that vulnerability has been properly addressed</div>
+                                    <div class="step-description">This step involves protecting against directory traversal by ensuring that any file operation is restricted to a specific directory and its subdirectories. This can be achieved by prefixing the file path with a base directory that is known to be safe and then validating the resulting path to ensure it does not attempt to traverse outside this base directory. The security principle here is to restrict access to only those resources that are necessary for the application&#39;s functionality, thereby reducing the attack surface. Implementing this protection requires modifying the file operation code to include path validation and ensuring that all file paths used in the application are absolute and sanitized.</div>
+                                    <pre class="step-code">BEFORE:
+DELETE DATASET ld_path.
+
+AFTER:
+DATA: lv_base_path TYPE string.
+lv_base_path = &#39;/safe/base/directory/&#39;.
+IF ld_path CS lv_base_path.
+  DELETE DATASET ld_path.
+ENDIF.</pre>
                                 </li>
                             </ol>
                         </div>
                         
                         <div class="risk-warning">
                             <h5>⚠️ Risk if not addressed:</h5>
-                            <p>Security risk associated with Directory Traversal</p>
+                            <p>CONCRETE IMPACT: An attacker could exploit directory traversal vulnerabilities to access sensitive files or directories, potentially leading to data breaches or system compromise. This could result in significant financial and reputational damage, as well as potential compliance violations.</p>
                         </div>
                     </div>
                 </div>
@@ -1062,7 +1062,7 @@ body {
                             <div class="tech-item">
                                 <h4>📊 Analysis Statistics</h4>
                                 <ul>
-                                    <li>Processing time: 32.45s</li>
+                                    <li>Processing time: 31.47s</li>
                                     <li>File size: 3.67 KB</li>
                                     <li>Language: Auto-detected</li>
                                     <li>Chunking: Disabled</li>
@@ -1082,7 +1082,7 @@ body {
                         
                         <div class="analysis-summary">
                             <h4>📋 Analysis Summary</h4>
-                            <pre>Se han identificado dos vulnerabilidades de Directory Traversal en el código, ambas con una severidad alta. Es importante validar adecuadamente los paths de archivo antes de realizar operaciones de archivo para prevenir este tipo de ataques.</pre>
+                            <pre>Se han detectado dos vulnerabilidades de Directory Traversal en el código, ambas con una severidad alta. Es importante abordar estas vulnerabilidades para prevenir posibles ataques de directory traversal.</pre>
                         </div>
                     </div>
                 </details>
@@ -1092,7 +1092,7 @@ body {
         <!-- Footer -->
         <footer class="footer">
             <div class="footer-content">
-                <p>Generated by <strong>Security Analysis Platform v3.0</strong> on 2025-12-15 at 17:48:22</p>
+                <p>Generated by <strong>Security Analysis Platform v3.0</strong> on 2025-12-16 at 11:17:57</p>
                 <p>For questions about this report, contact your security team.</p>
             </div>
         </footer>
@@ -1301,7 +1301,7 @@ function logReportStatistics() {
         totalVulnerabilities: 2,
         highPriority: 2,
         riskScore: 7.0,
-        processingTime: '32.45s',
+        processingTime: '31.47s',
         chunking: false,
         llmAnalysis: true,
         reportVersion: '3.0'
