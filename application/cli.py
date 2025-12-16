@@ -1,13 +1,7 @@
 # application/cli.py
 """
-CLI Interface - Clean & User-Friendly
-=====================================
-
-Responsibilities:
-- Parse command-line arguments
-- Display user-friendly messages
-- Handle errors gracefully
-- Orchestrate analysis workflow
+CLI Interface - Simplified Version
+==================================
 """
 
 import asyncio
@@ -20,10 +14,6 @@ from application.factory import create_factory
 from application.use_cases import AnalysisUseCase, CLIUseCase
 from infrastructure.config import settings
 
-# ════════════════════════════════════════════════════════════════════
-# CLI GROUP
-# ════════════════════════════════════════════════════════════════════
-
 @click.group()
 @click.version_option("3.0.0", prog_name="Security Analysis Platform")
 def cli():
@@ -31,46 +21,68 @@ def cli():
     pass
 
 
-# ════════════════════════════════════════════════════════════════════
-# ANALYZE COMMAND
-# ════════════════════════════════════════════════════════════════════
-
 @cli.command()
 @click.argument('input_file', type=click.Path(exists=True))
 @click.option('-o', '--output', default='security_report.html', help='Output HTML file')
 @click.option('-l', '--language', type=str, help='Programming language (python, java, abap)')
 @click.option('-v', '--verbose', is_flag=True, help='Verbose output')
-@click.option('--basic-mode', is_flag=True, help='Run without LLM analysis')
-# LLM Provider Options
+
+# LLM Provider
 @click.option(
     '--llm-provider',
     type=click.Choice(['openai', 'watsonx'], case_sensitive=False),
     help='LLM provider (overrides env config)'
 )
-@click.option('--llm-model', type=str, help='Specific model (e.g., gpt-4o, gpt-4-turbo)')
-# Feature Flags
-@click.option('--no-dedup', is_flag=True, help='Disable duplicate removal')
-@click.option(
-    '--dedup-strategy',
-    type=click.Choice(['strict', 'moderate', 'loose'], case_sensitive=False),
-    default='moderate',
-    help='Deduplication strategy'
-)
+@click.option('--llm-model', type=str, help='Specific model (e.g., gpt-4o)')
+
+# Chunking
 @click.option('--force-chunking', is_flag=True, help='Force chunking for large datasets')
 @click.option('--disable-chunking', is_flag=True, help='Disable chunking completely')
+
+# 🎯 FILTERING OPTIONS (SIMPLIFIED)
+@click.option(
+    '--min-severity',
+    type=click.Choice(['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], case_sensitive=False),
+    help='⚡ Filter by minimum severity. Example: --min-severity HIGH'
+)
+@click.option(
+    '--max-vulns',
+    type=int,
+    help='📊 Limit maximum vulnerabilities. Example: --max-vulns 20'
+)
+@click.option(
+    '--group-similar',
+    is_flag=True,
+    default=True,
+    help='🔗 Group similar vulnerabilities (default: enabled)'
+)
 def analyze(
-    input_file, output, language, verbose, basic_mode,
+    input_file, output, language, verbose,
     llm_provider, llm_model,
-    no_dedup, dedup_strategy,
-    force_chunking, disable_chunking
+    force_chunking, disable_chunking,
+    min_severity, max_vulns, group_similar
 ):
     """
-    Analyze security vulnerabilities from SAST tool output
+    Analyze security vulnerabilities with filtering
     
-    Example:
-        security-analyzer analyze vulnerabilities.json
-        security-analyzer analyze scan.json --llm-provider openai -o report.html
+    📚 EXAMPLES:
+    
+    # Basic analysis
+    llm-triage analyze scan.json
+    
+    # Filter by severity (only HIGH and CRITICAL)
+    llm-triage analyze scan.json --min-severity HIGH
+    
+    # Limit to top 10 most critical
+    llm-triage analyze scan.json --min-severity HIGH --max-vulns 10
+    
+    # Group similar vulnerabilities
+    llm-triage analyze scan.json --group-similar
+    
+    # Complete example with LLM provider
+    llm-triage analyze scan.json --min-severity HIGH --max-vulns 15 --llm-provider openai
     """
+    
     # Display header
     click.echo("="*60)
     click.echo("🛡️  Security Analysis Platform v3.0")
@@ -83,20 +95,21 @@ def analyze(
     if language:
         click.echo(f"💻 Language: {language}")
     
+    # Display filters
+    if min_severity:
+        click.echo(f"⚡ Severity Filter: >= {min_severity.upper()}")
+    
+    if max_vulns:
+        click.echo(f"📊 Max Vulnerabilities: {max_vulns}")
+    
+    if group_similar:
+        click.echo("🔗 Grouping: Similar vulnerabilities enabled")
+    
     # LLM Configuration
     if llm_provider:
         click.echo(f"🤖 LLM Provider: {llm_provider.upper()}")
     if llm_model:
         click.echo(f"📦 LLM Model: {llm_model}")
-    
-    # Feature flags
-    if no_dedup:
-        click.echo("🔄 Deduplication: DISABLED")
-    else:
-        click.echo(f"🔄 Deduplication: {dedup_strategy.upper()}")
-    
-    if basic_mode:
-        click.echo("⚡ Mode: BASIC (no LLM)")
     
     click.echo("")
     
@@ -107,13 +120,13 @@ def analyze(
             output=output,
             language=language,
             verbose=verbose,
-            basic_mode=basic_mode,
             llm_provider=llm_provider,
             llm_model=llm_model,
-            enable_dedup=not no_dedup,
-            dedup_strategy=dedup_strategy,
             force_chunking=force_chunking,
-            disable_chunking=disable_chunking
+            disable_chunking=disable_chunking,
+            min_severity=min_severity,
+            max_vulns=max_vulns,
+            group_similar=group_similar
         ))
         
         sys.exit(0 if success else 1)
@@ -134,34 +147,28 @@ async def _run_analysis(
     output: str,
     language: Optional[str],
     verbose: bool,
-    basic_mode: bool,
     llm_provider: Optional[str],
     llm_model: Optional[str],
-    enable_dedup: bool,
-    dedup_strategy: str,
     force_chunking: bool,
-    disable_chunking: bool
+    disable_chunking: bool,
+    min_severity: Optional[str],
+    max_vulns: Optional[int],
+    group_similar: bool
 ) -> bool:
-    """Execute analysis workflow"""
+    """Execute analysis workflow with filtering"""
     
     try:
-        # Create factory with overrides
+        # Create factory
         factory = create_factory(
             llm_provider_override=llm_provider,
             llm_model_override=llm_model
         )
         
-        # Configure deduplication
-        factory.enable_dedup = enable_dedup
-        factory.dedup_strategy = dedup_strategy
-        
-        # Check LLM availability
-        if not basic_mode and not settings.has_llm_provider and not llm_provider:
-            click.echo("⚠️  No LLM configured - switching to basic mode")
-            basic_mode = True
-        
-        # Display active provider
-        if not basic_mode:
+        # Check LLM
+        if not settings.has_llm_provider and not llm_provider:
+            click.echo("⚠️  No LLM configured - analysis may be limited")
+            click.echo("Set OPENAI_API_KEY or RESEARCH_API_KEY for full analysis\n")
+        else:
             active_provider = factory._get_effective_provider()
             click.echo(f"✅ Using LLM: {active_provider.upper()}\n")
         
@@ -178,15 +185,17 @@ async def _run_analysis(
         # Create CLI use case
         cli_use_case = CLIUseCase(analysis_use_case)
         
-        # Execute
+        # Execute with filtering
         return await cli_use_case.execute_cli_analysis(
             input_file=input_file,
             output_file=output,
             language=language,
             verbose=verbose,
-            disable_llm=basic_mode,
             force_chunking=force_chunking,
-            disable_chunking=disable_chunking
+            disable_chunking=disable_chunking,
+            min_severity=min_severity,
+            max_vulns=max_vulns,
+            group_similar=group_similar
         )
         
     except Exception as e:
@@ -197,19 +206,14 @@ async def _run_analysis(
         return False
 
 
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 # VALIDATE COMMAND
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 
 @cli.command()
 @click.argument('input_file', type=click.Path(exists=True))
 def validate(input_file):
-    """
-    Validate input file format and structure
-    
-    Example:
-        security-analyzer validate vulnerabilities.json
-    """
+    """Validate input file format and structure"""
     click.echo("="*60)
     click.echo("🔍 Validating Input File")
     click.echo("="*60)
@@ -220,11 +224,11 @@ def validate(input_file):
         
         scanner = ScannerService()
         
-        # Basic validation
+        # Validate file
         scanner._validate_file(input_file)
         click.echo("✅ File validation: PASSED")
         
-        # Load and analyze
+        # Load JSON
         raw_data = scanner._load_file(input_file)
         click.echo("✅ JSON format: VALID")
         
@@ -235,7 +239,7 @@ def validate(input_file):
             keys = list(raw_data.keys())[:5]
             click.echo(f"📊 Format: Object with keys: {keys}")
             
-            # Look for vulnerabilities
+            # Look for findings
             for key in ['findings', 'vulnerabilities', 'issues', 'results']:
                 if key in raw_data and isinstance(raw_data[key], list):
                     count = len(raw_data[key])
@@ -254,21 +258,6 @@ def validate(input_file):
             click.echo("\n📈 Severity Distribution:")
             for severity, count in severity_dist.items():
                 click.echo(f"   {severity}: {count}")
-            
-            # CVSS check
-            cvss_scores = [
-                v.meta.get('cvss_score') for v in vulns
-                if v.meta.get('cvss_score') is not None
-            ]
-            
-            if cvss_scores:
-                click.echo(f"\n📊 CVSS Scores:")
-                click.echo(f"   Count: {len(cvss_scores)}")
-                click.echo(f"   Min: {min(cvss_scores):.1f}")
-                click.echo(f"   Max: {max(cvss_scores):.1f}")
-                click.echo(f"   Avg: {sum(cvss_scores)/len(cvss_scores):.1f}")
-            else:
-                click.echo("\n⚠️  No CVSS scores found")
         
         click.echo("\n" + "="*60)
         click.echo("✅ Validation Complete")
@@ -279,101 +268,87 @@ def validate(input_file):
         sys.exit(1)
 
 
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 # EXAMPLES COMMAND
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 
 @cli.command()
 def examples():
     """Show usage examples"""
     click.echo("""
-╔════════════════════════════════════════════════════════════════╗
-║  🎓 Security Analysis Platform - Usage Examples               ║
-╚════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════╗
+║  🎓 Security Analysis Platform - Usage Examples             ║
+╚══════════════════════════════════════════════════════════════╝
 
 📝 BASIC USAGE:
-   security-analyzer analyze vulnerabilities.json
+   llm-triage analyze vulnerabilities.json
+
+⚡ FILTER BY SEVERITY:
+   # Only HIGH and CRITICAL
+   llm-triage analyze scan.json --min-severity ALTA
+   
+   # Only CRITICAL
+   llm-triage analyze scan.json --min-severity CRÍTICA
+
+📊 LIMIT RESULTS (For quick analysis):
+   # Analyze top 10 most critical
+   llm-triage analyze scan.json --min-severity ALTA --max-vulns 10
+   
+   # Analyze top 20 high severity
+   llm-triage analyze scan.json --min-severity ALTA --max-vulns 20
+
+🔗 GROUP SIMILAR VULNERABILITIES:
+   # Automatic grouping (enabled by default)
+   llm-triage analyze scan.json --group-similar
 
 🎯 WITH LLM PROVIDER:
    # Use OpenAI
-   security-analyzer analyze scan.json --llm-provider openai
+   llm-triage analyze scan.json --llm-provider openai
    
    # Use WatsonX
-   security-analyzer analyze scan.json --llm-provider watsonx
+   llm-triage analyze scan.json --llm-provider watsonx
    
    # Specify model
-   security-analyzer analyze scan.json \\
-       --llm-provider openai \\
-       --llm-model gpt-4-turbo
+   llm-triage analyze scan.json --llm-provider openai --llm-model gpt-4o
 
-💻 LANGUAGE-SPECIFIC:
-   security-analyzer analyze abap_scan.json --language abap
-   security-analyzer analyze py_scan.json --language python
+🎯 COMPLETE EXAMPLES:
 
-🔧 CUSTOM OUTPUT:
-   security-analyzer analyze scan.json -o my_report.html
+   # Example 1: Focus on critical issues only
+   llm-triage analyze large_scan.json \\
+       --min-severity CRÍTICA \\
+       --max-vulns 5 \\
+       --group-similar
 
-🔄 DEDUPLICATION:
-   # Strict (keep most findings)
-   security-analyzer analyze scan.json --dedup-strategy strict
-   
-   # Moderate (balanced - default)
-   security-analyzer analyze scan.json --dedup-strategy moderate
-   
-   # Loose (aggressive dedup)
-   security-analyzer analyze scan.json --dedup-strategy loose
-   
-   # Disable deduplication
-   security-analyzer analyze scan.json --no-dedup
-
-⚡ MODES:
-   # Basic mode (no LLM)
-   security-analyzer analyze scan.json --basic-mode
-   
-   # Verbose output
-   security-analyzer analyze scan.json --verbose
-
-🧩 CHUNKING:
-   # Force chunking (for large files)
-   security-analyzer analyze large_scan.json --force-chunking
-   
-   # Disable chunking
-   security-analyzer analyze scan.json --disable-chunking
-
-🔍 VALIDATION:
-   security-analyzer validate vulnerabilities.json
-
-📚 COMPLETE EXAMPLE:
-   security-analyzer analyze production_scan.json \\
+   # Example 2: Production scan with OpenAI
+   llm-triage analyze production_scan.json \\
+       --min-severity ALTA \\
        --llm-provider openai \\
        --llm-model gpt-4o \\
-       --language java \\
-       --dedup-strategy moderate \\
-       -o prod_report.html \\
-       --verbose
+       --group-similar \\
+       -o critical_report.html
 
-🔑 ENVIRONMENT VARIABLES:
-   OPENAI_API_KEY=sk-proj-xxxxx           # OpenAI key
-   RESEARCH_API_KEY=your_key              # WatsonX key
-   LLM_PRIMARY_PROVIDER=openai            # Default provider
-   LOG_LEVEL=INFO                         # Logging level
-   CACHE_ENABLED=true                     # Enable caching
-   DEDUP_STRATEGY=moderate                # Default dedup
+   # Example 3: Quick triage of top issues
+   llm-triage analyze scan.json \\
+       --min-severity ALTA \\
+       --max-vulns 15 \\
+       -o quick_report.html
 
-💡 TIPS:
-   • Use --verbose for detailed logs
-   • Validate files before analysis
-   • OpenAI is faster, WatsonX is cost-effective
-   • Deduplication reduces noise significantly
-   • Cache speeds up repeated analysis
+🔍 VALIDATION:
+   llm-triage validate vulnerabilities.json
 
-📖 Documentation: https://github.com/your-org/security-analyzer
+🔧 CONFIGURATION:
+   llm-triage config
+
+🧪 TEST LLM CONNECTION:
+   llm-triage test --provider openai
+
+📚 Documentation: https://github.com/jsuarezgz/llm-triage
 """)
 
 
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 # CONFIG COMMAND
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 
 @cli.command()
 def config():
@@ -384,7 +359,6 @@ def config():
     click.echo("⚙️  Current Configuration")
     click.echo("="*60)
     
-    # LLM Configuration
     click.echo("\n🤖 LLM Providers:")
     click.echo(f"   OpenAI:  {'✅ Configured' if settings.openai_api_key else '❌ Not configured'}")
     click.echo(f"   WatsonX: {'✅ Configured' if settings.watsonx_api_key else '❌ Not configured'}")
@@ -401,32 +375,27 @@ def config():
         except Exception as e:
             click.echo(f"\n   ⚠️  Error: {e}")
     
-    # Features
     click.echo("\n🔧 Features:")
     click.echo(f"   Cache: {'✅ Enabled' if settings.cache_enabled else '❌ Disabled'}")
-    click.echo(f"   Deduplication: {'✅ Enabled' if settings.dedup_enabled else '❌ Disabled'}")
     click.echo(f"   Metrics: {'✅ Enabled' if settings.metrics_enabled else '❌ Disabled'}")
     
-    # Cache
     if settings.cache_enabled:
         click.echo(f"\n💾 Cache:")
         click.echo(f"   Directory: {settings.cache_directory}")
         click.echo(f"   TTL: {settings.cache_ttl_hours} hours")
     
-    # Chunking
     click.echo(f"\n🧩 Chunking:")
     click.echo(f"   Max vulns/chunk: {settings.chunking_max_vulnerabilities}")
     
-    # Logging
     click.echo(f"\n📝 Logging:")
     click.echo(f"   Level: {settings.log_level}")
     
     click.echo("\n" + "="*60)
 
 
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 # TEST COMMAND
-# ════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
 
 @cli.command()
 @click.option('--provider', type=click.Choice(['openai', 'watsonx']), help='Test specific provider')
@@ -438,7 +407,6 @@ def test(provider):
     click.echo("🧪 Testing LLM Connection")
     click.echo("="*60)
     
-    # Determine provider
     if provider:
         test_provider = provider
     else:
@@ -451,12 +419,10 @@ def test(provider):
     click.echo(f"\n🤖 Testing: {test_provider.upper()}\n")
     
     try:
-        # Create client
         client = LLMClient(llm_provider=test_provider)
         click.echo(f"✅ Client created")
         click.echo(f"   Model: {client.model_name}")
         
-        # Test message
         async def run_test():
             test_message = "Return only this JSON: {\"status\": \"ok\", \"message\": \"test successful\"}"
             
@@ -476,10 +442,6 @@ def test(provider):
         click.echo(f"\n❌ Test failed: {e}")
         sys.exit(1)
 
-
-# ════════════════════════════════════════════════════════════════════
-# MAIN ENTRY POINT
-# ════════════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
     cli()

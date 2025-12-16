@@ -21,6 +21,7 @@ core/services/remediation.py
 core/services/reporter.py
 core/services/scanner.py
 core/services/triage.py
+core/services/vulnerability_filter.py
 infrastructure/__init__.py
 infrastructure/cache.py
 infrastructure/config.py
