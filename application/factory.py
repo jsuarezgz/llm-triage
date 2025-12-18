@@ -160,20 +160,6 @@ class ServiceFactory:
     def get_metrics(self) -> Optional[MetricsCollector]:
         """Get metrics collector"""
         return self.metrics
-    
-    # ════════════════════════════════════════════════════════════════
-    # DEBUG MODE
-    # ════════════════════════════════════════════════════════════════
-    
-    def enable_debug_mode(self):
-        """Enable debug mode"""
-        self.debug_mode = True
-        logger.info("🔍 Debug mode enabled")
-    
-    def disable_debug_mode(self):
-        """Disable debug mode"""
-        self.debug_mode = False
-        logger.info("🔍 Debug mode disabled")
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -200,12 +186,3 @@ def create_factory(
         llm_provider_override=llm_provider_override,
         llm_model_override=llm_model_override
     )
-
-
-def create_debug_factory(
-    llm_provider_override: Optional[str] = None
-) -> ServiceFactory:
-    """Create factory with debug enabled"""
-    factory = create_factory(llm_provider_override=llm_provider_override)
-    factory.enable_debug_mode()
-    return factory

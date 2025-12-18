@@ -1,447 +1,467 @@
 # application/cli.py
 """
-CLI Interface - Simplified Version
-==================================
+🛡️ Security Analysis Platform CLI - Simplified & Optimized
+===========================================================
+
+Professional CLI for vulnerability analysis with LLM.
+Version: 3.0.0
 """
 
 import asyncio
 import sys
+import click
 from pathlib import Path
 from typing import Optional
-import click
 
 from application.factory import create_factory
 from application.use_cases import AnalysisUseCase, CLIUseCase
 from infrastructure.config import settings
+from shared.logger import setup_logging
+
+__version__ = "3.0.0"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CLI GROUP
+# ═══════════════════════════════════════════════════════════════════════════
 
 @click.group()
-@click.version_option("3.0.0", prog_name="Security Analysis Platform")
+@click.version_option(__version__, prog_name="Security Analysis Platform")
 def cli():
-    """🛡️  Security Analysis Platform v3.0 - LLM-Powered Vulnerability Analysis"""
+    """
+    🛡️ Security Analysis Platform v3.0
+    
+    LLM-powered vulnerability triage and remediation.
+    
+    Quick start:  llm-triage analyze scan.json --format semgrep
+    """
     pass
 
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ANALYZE COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
 
 @cli.command()
 @click.argument('input_file', type=click.Path(exists=True))
 @click.option('-o', '--output', default='security_report.html', help='Output HTML file')
-@click.option('-l', '--language', type=str, help='Programming language (python, java, abap)')
+@click.option('-l', '--language', type=click.Choice(
+    ['python', 'java', 'javascript', 'abap', 'ruby', 'go', 'php'], case_sensitive=False
+))
+@click.option('-f', '--format', 'input_format', 
+    type=click.Choice(['auto', 'semgrep', 'abap', 'sonarqube', 'generic'], case_sensitive=False),
+    default='auto', show_default=True, help='Input JSON format'
+)
 @click.option('-v', '--verbose', is_flag=True, help='Verbose output')
-
-# LLM Provider
-@click.option(
-    '--llm-provider',
-    type=click.Choice(['openai', 'watsonx'], case_sensitive=False),
-    help='LLM provider (overrides env config)'
-)
-@click.option('--llm-model', type=str, help='Specific model (e.g., gpt-4o)')
-
-# Chunking
-@click.option('--force-chunking', is_flag=True, help='Force chunking for large datasets')
-@click.option('--disable-chunking', is_flag=True, help='Disable chunking completely')
-
-# 🎯 FILTERING OPTIONS (SIMPLIFIED)
-@click.option(
-    '--min-severity',
-    type=click.Choice(['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], case_sensitive=False),
-    help='⚡ Filter by minimum severity. Example: --min-severity HIGH'
-)
-@click.option(
-    '--max-vulns',
-    type=int,
-    help='📊 Limit maximum vulnerabilities. Example: --max-vulns 20'
-)
-@click.option(
-    '--group-similar',
-    is_flag=True,
-    default=True,
-    help='🔗 Group similar vulnerabilities (default: enabled)'
-)
-def analyze(
-    input_file, output, language, verbose,
-    llm_provider, llm_model,
-    force_chunking, disable_chunking,
-    min_severity, max_vulns, group_similar
-):
+@click.option('--llm-provider', type=click.Choice(['openai', 'watsonx'], case_sensitive=False))
+@click.option('--llm-model', type=str, help='LLM model name')
+@click.option('--min-severity', type=click.Choice(
+    ['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], case_sensitive=False
+))
+@click.option('--max-vulns', type=int, help='Maximum vulnerabilities to analyze')
+@click.option('--group-similar/--no-group-similar', default=True)
+@click.option('--force-chunking', is_flag=True)
+@click.option('--disable-chunking', is_flag=True)
+def analyze(input_file, output, language, input_format, verbose, llm_provider, 
+            llm_model, min_severity, max_vulns, group_similar, 
+            force_chunking, disable_chunking):
     """
-    Analyze security vulnerabilities with filtering
+    🔍 Analyze vulnerabilities with LLM triage
     
-    📚 EXAMPLES:
-    
-    # Basic analysis
-    llm-triage analyze scan.json
-    
-    # Filter by severity (only HIGH and CRITICAL)
-    llm-triage analyze scan.json --min-severity HIGH
-    
-    # Limit to top 10 most critical
-    llm-triage analyze scan.json --min-severity HIGH --max-vulns 10
-    
-    # Group similar vulnerabilities
-    llm-triage analyze scan.json --group-similar
-    
-    # Complete example with LLM provider
-    llm-triage analyze scan.json --min-severity HIGH --max-vulns 15 --llm-provider openai
+    \b
+    Examples:
+      llm-triage analyze scan.json
+      llm-triage analyze scan.json --format semgrep --min-severity HIGH
+      llm-triage analyze scan.json --format abap --language abap
+      llm-triage analyze scan.json --min-severity HIGH --max-vulns 10
     """
     
-    # Display header
-    click.echo("="*60)
-    click.echo("🛡️  Security Analysis Platform v3.0")
-    click.echo("="*60)
+    # Setup
+    setup_logging('INFO' if verbose else 'WARNING')
+    _print_header(input_file, output, input_format, min_severity, max_vulns)
     
-    # Display configuration
-    click.echo(f"\n📁 Input:  {Path(input_file).name}")
-    click.echo(f"📄 Output: {output}")
+    # Validate
+    if force_chunking and disable_chunking:
+        click.secho("❌ Cannot use both --force-chunking and --disable-chunking", fg='red', err=True)
+        sys.exit(1)
     
-    if language:
-        click.echo(f"💻 Language: {language}")
-    
-    # Display filters
-    if min_severity:
-        click.echo(f"⚡ Severity Filter: >= {min_severity.upper()}")
-    
-    if max_vulns:
-        click.echo(f"📊 Max Vulnerabilities: {max_vulns}")
-    
-    if group_similar:
-        click.echo("🔗 Grouping: Similar vulnerabilities enabled")
-    
-    # LLM Configuration
-    if llm_provider:
-        click.echo(f"🤖 LLM Provider: {llm_provider.upper()}")
-    if llm_model:
-        click.echo(f"📦 LLM Model: {llm_model}")
-    
-    click.echo("")
+    # Run
+    tool_hint = None if input_format == 'auto' else input_format.lower()
     
     try:
-        # Run analysis
-        success = asyncio.run(_run_analysis(
-            input_file=input_file,
-            output=output,
-            language=language,
-            verbose=verbose,
-            llm_provider=llm_provider,
-            llm_model=llm_model,
-            force_chunking=force_chunking,
-            disable_chunking=disable_chunking,
-            min_severity=min_severity,
-            max_vulns=max_vulns,
-            group_similar=group_similar
+        success = asyncio.run(_execute_analysis(
+            input_file, output, language, tool_hint, llm_provider, llm_model,
+            min_severity, max_vulns, group_similar, force_chunking, 
+            disable_chunking, verbose
         ))
-        
         sys.exit(0 if success else 1)
         
     except KeyboardInterrupt:
-        click.echo("\n\n🛑 Analysis interrupted by user")
-        sys.exit(1)
+        click.secho("\n🛑 Interrupted", fg='yellow', err=True)
+        sys.exit(130)
     except Exception as e:
-        click.echo(f"\n❌ Fatal error: {e}")
+        click.secho(f"\n❌ Error: {e}", fg='red', err=True)
         if verbose:
             import traceback
             traceback.print_exc()
         sys.exit(1)
 
 
-async def _run_analysis(
-    input_file: str,
-    output: str,
-    language: Optional[str],
-    verbose: bool,
-    llm_provider: Optional[str],
-    llm_model: Optional[str],
-    force_chunking: bool,
-    disable_chunking: bool,
-    min_severity: Optional[str],
-    max_vulns: Optional[int],
-    group_similar: bool
-) -> bool:
-    """Execute analysis workflow with filtering"""
+async def _execute_analysis(input_file, output, language, tool_hint, llm_provider,
+                            llm_model, min_severity, max_vulns, group_similar,
+                            force_chunking, disable_chunking, verbose):
+    """Execute analysis pipeline"""
     
-    try:
-        # Create factory
-        factory = create_factory(
-            llm_provider_override=llm_provider,
-            llm_model_override=llm_model
-        )
-        
-        # Check LLM
-        if not settings.has_llm_provider and not llm_provider:
-            click.echo("⚠️  No LLM configured - analysis may be limited")
-            click.echo("Set OPENAI_API_KEY or RESEARCH_API_KEY for full analysis\n")
-        else:
-            active_provider = factory._get_effective_provider()
-            click.echo(f"✅ Using LLM: {active_provider.upper()}\n")
-        
-        # Create services
-        analysis_use_case = AnalysisUseCase(
-            scanner_service=factory.create_scanner_service(),
-            triage_service=factory.create_triage_service(),
-            remediation_service=factory.create_remediation_service(),
-            reporter_service=factory.create_reporter_service(),
-            chunker=factory.create_chunker(),
-            metrics=factory.get_metrics()
-        )
-        
-        # Create CLI use case
-        cli_use_case = CLIUseCase(analysis_use_case)
-        
-        # Execute with filtering
-        return await cli_use_case.execute_cli_analysis(
-            input_file=input_file,
-            output_file=output,
-            language=language,
-            verbose=verbose,
-            force_chunking=force_chunking,
-            disable_chunking=disable_chunking,
-            min_severity=min_severity,
-            max_vulns=max_vulns,
-            group_similar=group_similar
-        )
-        
-    except Exception as e:
-        click.echo(f"❌ Analysis failed: {e}")
-        if verbose:
-            import traceback
-            traceback.print_exc()
-        return False
+    factory = create_factory(llm_provider, llm_model)
+    
+    # Check LLM
+    if not settings.has_llm_provider:
+        click.secho("⚠️  No LLM configured (limited analysis)", fg='yellow')
+    else:
+        click.echo(f"✅ LLM: {factory._get_effective_provider().upper()}")
+    
+    # Create use case
+    use_case = AnalysisUseCase(
+        scanner_service=factory.create_scanner_service(),
+        triage_service=factory.create_triage_service(),
+        remediation_service=factory.create_remediation_service(),
+        reporter_service=factory.create_reporter_service(),
+        chunker=factory.create_chunker(),
+        metrics=factory.get_metrics()
+    )
+    
+    cli_use_case = CLIUseCase(use_case)
+    
+    # Execute
+    return await cli_use_case.execute_cli_analysis(
+        input_file=input_file,
+        output_file=output,
+        language=language,
+        tool_hint=tool_hint,
+        verbose=verbose,
+        force_chunking=force_chunking,
+        disable_chunking=disable_chunking,
+        min_severity=min_severity,
+        max_vulns=max_vulns,
+        group_similar=group_similar
+    )
 
 
-# ════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
 # VALIDATE COMMAND
-# ════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
 
 @cli.command()
 @click.argument('input_file', type=click.Path(exists=True))
-def validate(input_file):
-    """Validate input file format and structure"""
-    click.echo("="*60)
-    click.echo("🔍 Validating Input File")
-    click.echo("="*60)
+@click.option('--format', 'expected_format')
+@click.option('--show-sample', is_flag=True)
+def validate(input_file, expected_format, show_sample):
+    """
+    🔍 Validate JSON file format
+    
+    \b
+    Examples:
+      llm-triage validate scan.json
+      llm-triage validate scan.json --format semgrep
+      llm-triage validate scan.json --show-sample
+    """
+    
+    from core.services.scanner import ScannerService
+    from adapters.parsers.parser_factory import ParserFactory
+    from collections import Counter
+    
+    click.echo("="*70)
+    click.echo("🔍 FILE VALIDATION")
+    click.echo("="*70)
     click.echo(f"\nFile: {input_file}\n")
     
     try:
-        from core.services.scanner import ScannerService
-        
         scanner = ScannerService()
+        parser_factory = ParserFactory()
         
-        # Validate file
+        # Step 1: File validation
+        click.echo("1️⃣  File validation...")
         scanner._validate_file(input_file)
-        click.echo("✅ File validation: PASSED")
+        size = Path(input_file).stat().st_size
+        click.secho(f"   ✅ Valid ({size:,} bytes)\n", fg='green')
         
-        # Load JSON
+        # Step 2: JSON structure
+        click.echo("2️⃣  JSON parsing...")
         raw_data = scanner._load_file(input_file)
-        click.echo("✅ JSON format: VALID")
+        click.secho("   ✅ Valid JSON\n", fg='green')
         
-        # Structure analysis
-        if isinstance(raw_data, list):
-            click.echo(f"📊 Format: List with {len(raw_data)} items")
-        elif isinstance(raw_data, dict):
-            keys = list(raw_data.keys())[:5]
-            click.echo(f"📊 Format: Object with keys: {keys}")
-            
-            # Look for findings
-            for key in ['findings', 'vulnerabilities', 'issues', 'results']:
-                if key in raw_data and isinstance(raw_data[key], list):
-                    count = len(raw_data[key])
-                    click.echo(f"🎯 Found {count} items in '{key}'")
-                    break
+        # Step 3: Format detection
+        click.echo("3️⃣  Format detection...")
+        detected = parser_factory.detect_format(raw_data)
         
-        # Parse test
-        vulns = scanner.parser.parse(raw_data)
-        click.echo(f"\n✅ Parsing test: Found {len(vulns)} vulnerabilities")
+        if detected:
+            click.secho(f"   ✅ Detected: {detected}", fg='green')
+            if expected_format:
+                if detected.lower() == expected_format.lower():
+                    click.secho(f"   ✅ Matches expected: {expected_format}", fg='green')
+                else:
+                    click.secho(f"   ⚠️  Expected {expected_format}, got {detected}", fg='yellow')
+        else:
+            click.secho("   ⚠️  Could not detect format", fg='yellow')
+        
+        click.echo()
+        
+        # Step 4: Parse vulnerabilities
+        click.echo("4️⃣  Parsing vulnerabilities...")
+        vulns = parser_factory.parse(raw_data, tool_hint=expected_format)
+        click.secho(f"   ✅ Parsed {len(vulns)} vulnerabilities\n", fg='green')
         
         if vulns:
-            # Severity distribution
-            from collections import Counter
+            # Statistics
             severity_dist = Counter(v.severity.value for v in vulns)
             
-            click.echo("\n📈 Severity Distribution:")
-            for severity, count in severity_dist.items():
-                click.echo(f"   {severity}: {count}")
+            click.echo("📊 Severity Distribution:")
+            for sev in ['CRÍTICA', 'ALTA', 'MEDIA', 'BAJA', 'INFO']:
+                count = severity_dist.get(sev, 0)
+                if count > 0:
+                    bar = '█' * min(count, 40)
+                    click.echo(f"   {sev:8s}: {count:4d} {bar}")
+            
+            # Sample
+            if show_sample:
+                click.echo("\n📄 Sample:")
+                v = vulns[0]
+                click.echo(f"   ID:       {v.id}")
+                click.echo(f"   Title:    {v.title}")
+                click.echo(f"   Severity: {v.severity.value}")
+                click.echo(f"   File:     {v.file_path}:{v.line_number}")
         
-        click.echo("\n" + "="*60)
-        click.echo("✅ Validation Complete")
-        click.echo("="*60)
+        # Success
+        click.echo("\n" + "="*70)
+        click.secho("✅ VALIDATION SUCCESSFUL", fg='green', bold=True)
+        click.echo("="*70)
+        
+        # Suggest command
+        if detected and vulns:
+            fmt = f"--format {detected.lower()}" if detected.lower() != 'auto' else ""
+            click.echo(f"\n💡 Run: llm-triage analyze {input_file} {fmt}".strip())
         
     except Exception as e:
-        click.echo(f"\n❌ Validation failed: {e}")
+        click.secho(f"\n❌ Validation failed: {e}", fg='red', err=True)
         sys.exit(1)
 
 
-# ════════════════════════════════════════════════════════════════
-# EXAMPLES COMMAND
-# ════════════════════════════════════════════════════════════════
-
-@cli.command()
-def examples():
-    """Show usage examples"""
-    click.echo("""
-╔══════════════════════════════════════════════════════════════╗
-║  🎓 Security Analysis Platform - Usage Examples             ║
-╚══════════════════════════════════════════════════════════════╝
-
-📝 BASIC USAGE:
-   llm-triage analyze vulnerabilities.json
-
-⚡ FILTER BY SEVERITY:
-   # Only HIGH and CRITICAL
-   llm-triage analyze scan.json --min-severity ALTA
-   
-   # Only CRITICAL
-   llm-triage analyze scan.json --min-severity CRÍTICA
-
-📊 LIMIT RESULTS (For quick analysis):
-   # Analyze top 10 most critical
-   llm-triage analyze scan.json --min-severity ALTA --max-vulns 10
-   
-   # Analyze top 20 high severity
-   llm-triage analyze scan.json --min-severity ALTA --max-vulns 20
-
-🔗 GROUP SIMILAR VULNERABILITIES:
-   # Automatic grouping (enabled by default)
-   llm-triage analyze scan.json --group-similar
-
-🎯 WITH LLM PROVIDER:
-   # Use OpenAI
-   llm-triage analyze scan.json --llm-provider openai
-   
-   # Use WatsonX
-   llm-triage analyze scan.json --llm-provider watsonx
-   
-   # Specify model
-   llm-triage analyze scan.json --llm-provider openai --llm-model gpt-4o
-
-🎯 COMPLETE EXAMPLES:
-
-   # Example 1: Focus on critical issues only
-   llm-triage analyze large_scan.json \\
-       --min-severity CRÍTICA \\
-       --max-vulns 5 \\
-       --group-similar
-
-   # Example 2: Production scan with OpenAI
-   llm-triage analyze production_scan.json \\
-       --min-severity ALTA \\
-       --llm-provider openai \\
-       --llm-model gpt-4o \\
-       --group-similar \\
-       -o critical_report.html
-
-   # Example 3: Quick triage of top issues
-   llm-triage analyze scan.json \\
-       --min-severity ALTA \\
-       --max-vulns 15 \\
-       -o quick_report.html
-
-🔍 VALIDATION:
-   llm-triage validate vulnerabilities.json
-
-🔧 CONFIGURATION:
-   llm-triage config
-
-🧪 TEST LLM CONNECTION:
-   llm-triage test --provider openai
-
-📚 Documentation: https://github.com/jsuarezgz/llm-triage
-""")
-
-
-# ════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
 # CONFIG COMMAND
-# ════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
 
 @cli.command()
 def config():
-    """Display current configuration"""
-    from infrastructure.config import settings
+    """⚙️  Show configuration"""
     
-    click.echo("="*60)
-    click.echo("⚙️  Current Configuration")
-    click.echo("="*60)
+    click.echo("="*70)
+    click.echo("⚙️  CONFIGURATION")
+    click.echo("="*70)
     
+    # LLM
     click.echo("\n🤖 LLM Providers:")
-    click.echo(f"   OpenAI:  {'✅ Configured' if settings.openai_api_key else '❌ Not configured'}")
-    click.echo(f"   WatsonX: {'✅ Configured' if settings.watsonx_api_key else '❌ Not configured'}")
+    click.echo(f"   OpenAI:  {'✅' if settings.openai_api_key else '❌'}")
+    click.echo(f"   WatsonX: {'✅' if settings.watsonx_api_key else '❌'}")
     
     if settings.has_llm_provider:
-        try:
-            provider = settings.get_available_llm_provider()
-            click.echo(f"\n   Active Provider: {provider.upper()}")
-            config = settings.get_llm_config(provider)
-            click.echo(f"   Model: {config['model']}")
-            click.echo(f"   Temperature: {config['temperature']}")
-            click.echo(f"   Max Tokens: {config['max_tokens']}")
-            click.echo(f"   Timeout: {config['timeout']}s")
-        except Exception as e:
-            click.echo(f"\n   ⚠️  Error: {e}")
+        provider = settings.get_available_llm_provider()
+        config = settings.get_llm_config(provider)
+        click.echo(f"\n   Active: {provider.upper()}")
+        click.echo(f"   Model:  {config['model']}")
+        click.echo(f"   Temp:   {config['temperature']}")
     
+    # Features
     click.echo("\n🔧 Features:")
-    click.echo(f"   Cache: {'✅ Enabled' if settings.cache_enabled else '❌ Disabled'}")
-    click.echo(f"   Metrics: {'✅ Enabled' if settings.metrics_enabled else '❌ Disabled'}")
+    click.echo(f"   Cache:  {'✅' if settings.cache_enabled else '❌'}")
+    click.echo(f"   Dedup:  {'✅' if settings.dedup_enabled else '❌'} ({settings.dedup_strategy})")
+    click.echo(f"   Metrics: {'✅' if settings.metrics_enabled else '❌'}")
     
-    if settings.cache_enabled:
-        click.echo(f"\n💾 Cache:")
-        click.echo(f"   Directory: {settings.cache_directory}")
-        click.echo(f"   TTL: {settings.cache_ttl_hours} hours")
+    # Parsers
+    click.echo("\n📋 Parsers:")
+    from adapters.parsers.parser_factory import ParserFactory
+    for fmt in ParserFactory().get_supported_formats():
+        click.echo(f"   • {fmt}")
     
-    click.echo(f"\n🧩 Chunking:")
-    click.echo(f"   Max vulns/chunk: {settings.chunking_max_vulnerabilities}")
-    
-    click.echo(f"\n📝 Logging:")
-    click.echo(f"   Level: {settings.log_level}")
-    
-    click.echo("\n" + "="*60)
+    click.echo("\n" + "="*70)
 
 
-# ════════════════════════════════════════════════════════════════
-# TEST COMMAND
-# ════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════
+# FORMATS COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
 
 @cli.command()
-@click.option('--provider', type=click.Choice(['openai', 'watsonx']), help='Test specific provider')
-def test(provider):
-    """Test LLM connection"""
-    from infrastructure.llm.client import LLMClient
+def formats():
+    """📋 List supported formats"""
     
-    click.echo("="*60)
-    click.echo("🧪 Testing LLM Connection")
-    click.echo("="*60)
+    formats = [
+        ("semgrep", "Semgrep static analysis", "semgrep --json --config auto"),
+        ("abap", "ABAP Security Scanner", "abap-scanner --output scan.json"),
+        ("sonarqube", "SonarQube issues export", "sonar-scanner"),
+        ("generic", "Generic vulnerability JSON", "Any basic JSON format"),
+    ]
+    
+    click.echo("\n📋 SUPPORTED FORMATS\n")
+    
+    for key, desc, example in formats:
+        click.echo(f"  {key:12s} - {desc}")
+        click.echo(f"               Example: {example}\n")
+    
+    click.echo("Usage: llm-triage analyze scan.json --format <key>\n")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TEST COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+@click.option('--provider', type=click.Choice(['openai', 'watsonx'], case_sensitive=False))
+def test(provider):
+    """🧪 Test LLM connection"""
     
     if provider:
-        test_provider = provider
-    else:
-        if not settings.has_llm_provider:
-            click.echo("\n❌ No LLM provider configured")
-            click.echo("Set OPENAI_API_KEY or RESEARCH_API_KEY")
-            sys.exit(1)
+        test_provider = provider.lower()
+    elif settings.has_llm_provider:
         test_provider = settings.get_available_llm_provider()
+    else:
+        click.secho("❌ No LLM provider configured", fg='red', err=True)
+        sys.exit(1)
     
-    click.echo(f"\n🤖 Testing: {test_provider.upper()}\n")
+    click.echo(f"🧪 Testing {test_provider.upper()}...\n")
     
     try:
+        from infrastructure.llm.client import LLMClient
+        
         client = LLMClient(llm_provider=test_provider)
-        click.echo(f"✅ Client created")
-        click.echo(f"   Model: {client.model_name}")
+        click.echo(f"✅ Client created (model: {client.model_name})")
         
         async def run_test():
-            test_message = "Return only this JSON: {\"status\": \"ok\", \"message\": \"test successful\"}"
-            
-            click.echo(f"\n📡 Sending test request...")
-            response = await client._call_api(test_message, temperature=0.0)
-            
+            response = await client._call_api(
+                '{"status": "test"}', 
+                temperature=0.0
+            )
             click.echo(f"✅ Response received ({len(response)} chars)")
-            click.echo(f"\nPreview:\n{response[:200]}...")
+            return True
         
         asyncio.run(run_test())
         
-        click.echo("\n" + "="*60)
-        click.echo("✅ Test Successful")
-        click.echo("="*60)
+        click.secho(f"\n✅ {test_provider.upper()} is working correctly", fg='green', bold=True)
         
     except Exception as e:
-        click.echo(f"\n❌ Test failed: {e}")
+        click.secho(f"\n❌ Test failed: {e}", fg='red', err=True, bold=True)
+        
+        click.echo("\n💡 Troubleshooting:")
+        if test_provider == 'openai':
+            click.echo("   • Set OPENAI_API_KEY environment variable")
+            click.echo("   • Verify key at platform.openai.com")
+        elif test_provider == 'watsonx':
+            click.echo("   • Set RESEARCH_API_KEY environment variable")
+            click.echo("   • Check RESEARCH_API_URL if custom")
+        
+        sys.exit(1)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EXAMPLES COMMAND
+# ═══════════════════════════════════════════════════════════════════════════
+
+@cli.command()
+def examples():
+    """📚 Show usage examples"""
+    
+    click.echo("""
+╔══════════════════════════════════════════════════════════════════════╗
+║  📚 USAGE EXAMPLES                                                   ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+🎯 BASIC
+   llm-triage analyze scan.json
+   llm-triage analyze scan.json -o report.html
+
+📋 WITH FORMAT
+   llm-triage analyze scan.json --format semgrep
+   llm-triage analyze scan.json --format abap --language abap
+   llm-triage analyze scan.json --format sonarqube
+
+🔍 FILTERING
+   llm-triage analyze scan.json --min-severity HIGH
+   llm-triage analyze scan.json --min-severity HIGH --max-vulns 10
+   llm-triage analyze scan.json --no-group-similar
+
+🤖 LLM OPTIONS
+   llm-triage analyze scan.json --llm-provider openai
+   llm-triage analyze scan.json --llm-provider watsonx
+   llm-triage analyze scan.json --llm-model gpt-4o
+
+🎯 COMPLETE EXAMPLE
+   llm-triage analyze production-scan.json \\
+       --format semgrep \\
+       --language python \\
+       --min-severity HIGH \\
+       --max-vulns 20 \\
+       --llm-provider openai \\
+       --output critical-report.html \\
+       --verbose
+
+⚡ PERFORMANCE
+   llm-triage analyze large.json --force-chunking
+   llm-triage analyze small.json --disable-chunking
+
+🔧 UTILITIES
+   llm-triage validate scan.json
+   llm-triage validate scan.json --format semgrep --show-sample
+   llm-triage config
+   llm-triage test --provider openai
+   llm-triage formats
+
+╚══════════════════════════════════════════════════════════════════════╝
+""")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _print_header(input_file, output, input_format, min_severity, max_vulns):
+    """Print analysis header"""
+    click.echo("="*70)
+    click.echo("🛡️  SECURITY ANALYSIS PLATFORM v3.0")
+    click.echo("="*70)
+    
+    click.echo(f"\n📋 Configuration:")
+    click.echo(f"   Input:  {Path(input_file).name}")
+    click.echo(f"   Output: {output}")
+    
+    # Format
+    if input_format == 'auto':
+        click.echo(f"   Format: AUTO-DETECT")
+    else:
+        click.secho(f"   Format: {input_format.upper()}", fg='cyan')
+    
+    # Filters
+    filters = []
+    if min_severity:
+        filters.append(f"severity≥{min_severity}")
+    if max_vulns:
+        filters.append(f"max={max_vulns}")
+    
+    if filters:
+        click.secho(f"   Filters: {', '.join(filters)}", fg='yellow')
+    
+    click.echo()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MAIN ENTRY POINT
+# ═══════════════════════════════════════════════════════════════════════════
+
+def main():
+    """Main entry point"""
+    try:
+        cli(prog_name='llm-triage')
+    except Exception as e:
+        click.secho(f"Fatal error: {e}", fg='red', err=True)
         sys.exit(1)
 
 
 if __name__ == '__main__':
-    cli()
+    main()

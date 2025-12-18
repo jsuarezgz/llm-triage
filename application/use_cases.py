@@ -323,16 +323,16 @@ class CLIUseCase:
     
     def __init__(self, analysis_use_case: AnalysisUseCase):
         self.analysis = analysis_use_case
-    
+
     async def execute_cli_analysis(
         self,
         input_file: str,
         output_file: str = "security_report.html",
         language: Optional[str] = None,
+        tool_hint: Optional[str] = None,
         verbose: bool = False,
         force_chunking: bool = False,
         disable_chunking: bool = False,
-        # Simplified filtering
         min_severity: Optional[str] = None,
         max_vulns: Optional[int] = None,
         group_similar: bool = False
@@ -344,6 +344,7 @@ class CLIUseCase:
                 file_path=input_file,
                 output_file=output_file,
                 language=language,
+                tool_hint=tool_hint,
                 force_chunking=force_chunking,
                 disable_chunking=disable_chunking,
                 min_severity=min_severity,

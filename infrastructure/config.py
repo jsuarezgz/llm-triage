@@ -57,7 +57,7 @@ class Settings:
         # PARAMETERS
         # ═══════════════════════════════════════════════════════════
         
-        self.chunking_max_vulnerabilities = self._get_int("CHUNKING_MAX_VULNS", 5)
+        self.chunking_max_vulnerabilities = self._get_int("CHUNKING_MAX_VULNS", 3)
         self.cache_ttl_hours = self._get_int("CACHE_TTL_HOURS", 24)
         self.cache_directory = os.getenv("CACHE_DIR", ".security_cache")
         self.dedup_strategy = os.getenv("DEDUP_STRATEGY", "moderate").lower()
@@ -269,28 +269,3 @@ class Settings:
 # ════════════════════════════════════════════════════════════════════
 
 settings = Settings()
-
-
-# ════════════════════════════════════════════════════════════════════
-# CONVENIENCE FUNCTIONS
-# ════════════════════════════════════════════════════════════════════
-
-def get_config() -> Settings:
-    """Get global settings instance"""
-    return settings
-
-
-def reload_config() -> Settings:
-    """Reload configuration"""
-    global settings
-    settings = Settings()
-    return settings
-
-
-def validate_llm_config(provider: str) -> bool:
-    """Validate LLM provider configuration"""
-    try:
-        config = settings.get_llm_config(provider)
-        return bool(config["api_key"])
-    except (ValueError, KeyError):
-        return False

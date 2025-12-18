@@ -236,9 +236,24 @@ class LLMClient:
             "prompt": None,
             "uuid": session_uuid,
             "language": "es",
-            "user": getattr(self, 'user_email', 'user@research.com')
+            "user": getattr(self, 'user_email', 'user@research.com'),
+            
+            # AGREGAR PARÁMETROS DE GENERACIÓN
+            "max_tokens": self.max_tokens,  # Usa el config (2048)
+            "min_tokens": 100,              # Mínimo razonable
+            "top_p": 0.95,
+            "stop_sequences": None,
+            
+            # DESACTIVAR FILTROS AGRESIVOS
+            "return_options": {
+                "input_tokens": True,
+                "generated_tokens": True
+            }
         }
-        
+        # LOG DEL PAYLOAD PARA DEBUG
+        if self.debug_enabled:
+            logger.debug(f"📤 Payload: {json.dumps(payload, indent=2)}")
+            
         start = time.time()
         
         try:
@@ -288,14 +303,19 @@ class LLMClient:
         Returns:
             Extracted content string
         """
+        logger.debug(f"📦 Raw response: {response.text[:500]}")
+        
         # Try JSON first
         try:
             data = response.json()
+            logger.debug(f"📋 Parsed JSON keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
             
             # Search for content in common fields
             for field in ['content', 'response', 'message', 'text', 'output', 'result']:
                 if field in data:
                     value = data[field]
+                    
+                    logger.debug(f"✅ Found field '{field}': {str(value)[:200]}")
                     
                     # Recursive extraction for nested dicts
                     if isinstance(value, dict):
@@ -304,12 +324,12 @@ class LLMClient:
                             return nested
                     elif value:
                         return str(value)
-            
-            # No known field, return as JSON string
+        
+            logger.warning(f"⚠️ No known content field found. Available: {list(data.keys())}")
             return response.text
             
-        except ValueError:
-            # Not JSON, return as text
+        except ValueError as e:
+            logger.warning(f"⚠️ Response is not JSON: {e}")
             return response.text
     
     def _extract_from_dict(self, data: Dict) -> Optional[str]:

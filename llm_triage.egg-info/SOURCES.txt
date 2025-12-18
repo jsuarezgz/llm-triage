@@ -20,6 +20,7 @@ core/services/__init__.py
 core/services/remediation.py
 core/services/reporter.py
 core/services/scanner.py
+core/services/scanner_helpers.py
 core/services/triage.py
 core/services/vulnerability_filter.py
 infrastructure/__init__.py
@@ -40,4 +41,3 @@ shared/constants.py
 shared/formatters.py
 shared/logger.py
 shared/metrics.py
-shared/validators.py

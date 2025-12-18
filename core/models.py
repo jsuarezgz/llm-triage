@@ -1,20 +1,23 @@
 # core/models.py
 """
-Domain Models - Simplified & Optimized
-=====================================
+Domain Models - Complete & Fixed
+=================================
 
 Clean domain models with validation and computed properties.
 """
 
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel, Field, field_validator, computed_field, ConfigDict, model_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # ENUMS - Centralized
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 class SeverityLevel(str, Enum):
     """Vulnerability severity levels"""
@@ -58,9 +61,9 @@ class AnalysisStatus(str, Enum):
     NEEDS_MANUAL_REVIEW = "needs_manual_review"
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # VULNERABILITY MODEL
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 class Vulnerability(BaseModel):
     """Core vulnerability model with validation"""
@@ -90,10 +93,16 @@ class Vulnerability(BaseModel):
     # Remediation
     impact_description: Optional[str] = None
     remediation_advice: Optional[str] = None
+    references: Optional[List[str]] = None
     
     # Metadata
     created_at: datetime = Field(default_factory=datetime.now)
     meta: Dict[str, Any] = Field(default_factory=dict)
+    
+    model_config = ConfigDict(
+        use_enum_values=False,  # Keep enum objects, not values
+        validate_assignment=True
+    )
     
     @field_validator('severity', mode='before')
     @classmethod
@@ -111,11 +120,13 @@ class Vulnerability(BaseModel):
                 'HIGH': SeverityLevel.HIGH,
                 'ALTA': SeverityLevel.HIGH,
                 'MAJOR': SeverityLevel.HIGH,
+                'ERROR': SeverityLevel.HIGH,
                 'MEDIUM': SeverityLevel.MEDIUM,
                 'MEDIA': SeverityLevel.MEDIUM,
+                'WARNING': SeverityLevel.MEDIUM,
                 'LOW': SeverityLevel.LOW,
                 'BAJA': SeverityLevel.LOW,
-                'MINOR': SeverityLevel.MEDIUM,
+                'MINOR': SeverityLevel.LOW,
                 'INFO': SeverityLevel.INFO,
             }
             return severity_map.get(v.upper(), SeverityLevel.MEDIUM)
@@ -138,18 +149,37 @@ class Vulnerability(BaseModel):
         return self.severity in [SeverityLevel.CRITICAL, SeverityLevel.HIGH]
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # TRIAGE MODELS
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 class TriageDecision(BaseModel):
-    """Single triage decision"""
-    vulnerability_id: str
+    """Single triage decision with enhanced validation"""
+    vulnerability_id: str = Field(..., min_length=1)
     decision: AnalysisStatus
-    confidence_score: float = Field(ge=0.0, le=1.0)
+    confidence_score: float = Field(..., ge=0.0, le=1.0)
     reasoning: str = Field(..., min_length=10)
     llm_model_used: str
     analyzed_at: datetime = Field(default_factory=datetime.now)
+    
+    @model_validator(mode='after')
+    def validate_consistency(self):
+        """Validate decision consistency"""
+        # Low confidence + confirmed = suspicious
+        if self.decision == AnalysisStatus.CONFIRMED and self.confidence_score < 0.6:
+            logger.warning(
+                f"⚠️ Low confidence ({self.confidence_score}) "
+                f"for confirmed decision on {self.vulnerability_id}"
+            )
+        
+        # High confidence + needs review = suspicious
+        if self.decision == AnalysisStatus.NEEDS_MANUAL_REVIEW and self.confidence_score > 0.8:
+            logger.warning(
+                f"⚠️ High confidence ({self.confidence_score}) "
+                f"but marked for review: {self.vulnerability_id}"
+            )
+        
+        return self
 
 
 class TriageResult(BaseModel):
@@ -179,37 +209,84 @@ class TriageResult(BaseModel):
         return sum(1 for d in self.decisions if d.decision == AnalysisStatus.NEEDS_MANUAL_REVIEW)
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # REMEDIATION MODELS
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 class RemediationStep(BaseModel):
-    """Single remediation step"""
+    """Single remediation step with validation"""
     step_number: int = Field(ge=1)
-    title: str = Field(..., min_length=1, max_length=200)
+    title: str = Field(..., min_length=10, max_length=200)
     description: str = Field(..., min_length=10)
-    code_example: Optional[str] = None
-    estimated_minutes: Optional[int] = Field(None, ge=1)
+    code_example: Optional[str] = Field(None, max_length=5000)
+    estimated_minutes: Optional[int] = Field(None, ge=5, le=480)
     difficulty: str = Field(default="medium", pattern=r"^(easy|medium|hard)$")
-    tools_required: List[str] = Field(default_factory=list)
+    tools_required: List[str] = Field(default_factory=list, max_length=5)
+    
+    @model_validator(mode='after')
+    def validate_code_quality(self):
+        """Validate code example quality"""
+        if self.code_example:
+            # Check for BEFORE/AFTER pattern
+            has_before = 'BEFORE' in self.code_example or 'before' in self.code_example.lower()
+            has_after = 'AFTER' in self.code_example or 'after' in self.code_example.lower()
+            
+            if not (has_before and has_after):
+                logger.debug(
+                    f"Step {self.step_number} code example "
+                    f"missing BEFORE/AFTER pattern"
+                )
+        
+        return self
 
 
 class RemediationPlan(BaseModel):
-    """Complete remediation plan"""
+    """Complete remediation plan with validation"""
     vulnerability_id: str
     vulnerability_type: VulnerabilityType
     priority_level: str = Field(..., pattern=r"^(immediate|high|medium|low)$")
     complexity_score: float = Field(ge=0.0, le=10.0, default=5.0)
-    steps: List[RemediationStep] = Field(..., min_length=1)
-    risk_if_not_fixed: str = "Security vulnerability should be remediated."
-    references: List[str] = Field(default_factory=list)
+    steps: List[RemediationStep] = Field(..., min_length=1, max_length=10)
+    risk_if_not_fixed: str = Field(min_length=20, default="Security vulnerability should be remediated.")
+    references: List[str] = Field(default_factory=list, max_length=10)
     llm_model_used: str
     created_at: datetime = Field(default_factory=datetime.now)
+    
+    @model_validator(mode='after')
+    def validate_steps_order(self):
+        """Validate steps are in correct order"""
+        expected_numbers = list(range(1, len(self.steps) + 1))
+        actual_numbers = [step.step_number for step in self.steps]
+        
+        if actual_numbers != expected_numbers:
+            logger.warning(
+                f"⚠️ Step numbers not sequential: {actual_numbers}. "
+                f"Expected: {expected_numbers}"
+            )
+            # Auto-fix
+            for i, step in enumerate(self.steps, 1):
+                step.step_number = i
+        
+        return self
+    
+    @computed_field
+    @property
+    def total_estimated_minutes(self) -> int:
+        """Calculate total time estimate"""
+        return sum(step.estimated_minutes or 30 for step in self.steps)
+    
+    @computed_field
+    @property
+    def difficulty_score(self) -> float:
+        """Calculate average difficulty (1-3 scale)"""
+        difficulty_map = {'easy': 1, 'medium': 2, 'hard': 3}
+        scores = [difficulty_map.get(step.difficulty, 2) for step in self.steps]
+        return sum(scores) / len(scores) if scores else 2.0
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # SCAN RESULT
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 class ScanResult(BaseModel):
     """Scan result with statistics"""
@@ -237,9 +314,9 @@ class ScanResult(BaseModel):
         return sum(1 for v in self.vulnerabilities if v.is_high_priority)
 
 
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # ANALYSIS REPORT
-# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 class AnalysisReport(BaseModel):
     """Final analysis report"""
